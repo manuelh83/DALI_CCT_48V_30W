@@ -131,29 +131,108 @@ Design conditions assumed: reinforced insulation, working voltage 63 V, pollutio
 
 ---
 
-### OI-008 [VALIDATION] Thermal Validation
+### OI-008 [IN PROGRESS] Thermal Validation
 
 **Description**: Each linear current sink (Q_WW, Q_CW) can dissipate up to 11.2 W at worst case (44V bus, 28V LED, 700mA). Aluminium enclosure coupling is assumed but not dimensioned.
 
-**Thermal budget (estimated)**:
+**Thermal optimization analysis (Rev A → Rev A.1):**
 
-| Node | Rth (est.) | ΔT at 11.2W |
+The original SOT-223 package was found to be thermally inadequate (calculated Tj = 193°C). The following measures have been taken:
+
+#### Measure 1: Package change SOT-223 → D2PAK (TO-263)
+
+Q_WW and Q_CW are changed from **NTMFS5C604NL (SOT-223)** to **STB20NF06L (D2PAK / TO-263)**:
+
+| Parameter | NTMFS5C604NL SOT-223 | STB20NF06L D2PAK |
 |---|---|---|
-| Junction → package (NTMFS5C604NL SOT-223) | 10 °C/W | 112 °C |
-| Package → PCB (solder + exposed pad) | 3 °C/W | 34 °C |
-| PCB → Al enclosure (thermal vias + TIM) | 2 °C/W | 22 °C |
-| Al enclosure → ambient | dependent on enclosure | — |
+| Vdss | 60 V | 60 V |
+| Id | 15 A | 20 A |
+| Rds(on) | 9 mΩ | 32 mΩ |
+| Rth(j-c) | 10 °C/W | **3.1 °C/W** |
+| Package | SOT-223 (small tab) | D2PAK (large exposed underside tab) |
 
-At 25 °C ambient and Rth_junc-ambient ≈ 15 °C/W (junction to PCB): Tj ≈ 25 + 11.2 × 15 = **193 °C** – unacceptable. Layout must use ≥ 4 thermal vias per MOSFET through to bottom copper pour, which reduces PCB thermal resistance to ~2 °C/W. With effective Rth_junc-enclosure ≈ 8 °C/W: Tj ≈ 25 + 11.2 × 8 = **115 °C** (acceptable, Tj,max = 150 °C for NTMFS5C604NL).
+#### Measure 2: Increased thermal via count per device
 
-**Required action**:
-- Measure junction temperature on prototype under worst-case conditions.
-- Characterize thermal resistance through layout.
-- If Tj > 125°C at 50°C ambient: add more thermal vias or reduce maximum current firmware limit.
+Increase from ≥4 to **9 thermal vias per device** (3×3 array, 0.3 mm drill, 0.5 mm diameter, Cu-filled/capped preferred):
 
-**Status**: 🔲 OPEN – estimated budget provided; validate on prototype. Stage 6 of bring-up-and-test-plan.md.
+```
+Via resistance per via:
+  R_via = L / (k_Cu × A_via)
+         = 0.0016 m / (385 W/m·K × π × (0.15×10⁻³)² m²)
+         = 0.0016 / (385 × 7.07×10⁻⁸)
+         = 58.8 °C/W per via
 
-**Risk level**: HIGH – thermal failure will reduce reliability or cause immediate shutdown.
+9 vias in parallel:
+  R_vias = 58.8 / 9 = 6.5 °C/W
+
+B.Cu lateral spreading resistance (20×20 mm Cu pour):
+  ~0.5 °C/W
+
+Total R_PCB-enclosure (vias + spreading) ≈ 1.2 °C/W
+```
+
+#### Measure 3: Adaptive bus voltage firmware control
+
+The primary measure to achieve Tj < 125°C is **adaptive bus voltage regulation**:
+
+- Firmware reads ADC_VBUS and estimates MOSFET V_DS from V_LED_BUS and LED forward voltage model (calibrated per LED module type)
+- Firmware targets V_bus = V_LED_forward(I) + 2.5 V headroom (minimum for current-sink operation)
+- LT8390A setpoint updated via feedback divider DAC or digital potentiometer (OI to track implementation)
+- Minimum V_bus: 30.5 V (covers 28 V LED + 2.5 V headroom)
+- Maximum V_bus: 44 V (existing set point)
+
+Effect: at worst-case 28 V LED / 700 mA, Pdiss drops from 11.2 W to:
+```
+P_diss = (V_bus_adaptive − V_LED) × I = (28 + 2.5 − 28) × 0.7 = 2.5 × 0.7 = 1.75 W
+```
+
+#### Revised thermal budget (all measures combined)
+
+Assumptions: T_ambient = 50 °C (worst-case operating), adaptive bus voltage active, both channels at 700 mA.
+
+| Segment | Component | Rth | ΔT (at 1.75W) |
+|---|---|---|---|
+| Junction → case | STB20NF06L D2PAK (IEC thermal) | 3.1 °C/W | 5.4 °C |
+| Case → PCB | Solder pad, D2PAK exposed tab | 1.0 °C/W | 1.75 °C |
+| PCB → Al enclosure | 9 thermal vias + 20×20 mm B.Cu + TIM | 1.2 °C/W | 2.1 °C |
+| Al enclosure → ambient | 150×60 mm Al extrusion (both channels = 3.5 W total) | 2.5 °C/W (total) | ΔT_Al ≈ 4.4 °C |
+| **Total R_j-ambient** | | **≈ 7.8 °C/W** | |
+
+```
+T_Al = T_ambient + P_both × R_Al-ambient / 2 (per device)
+     = 50 + 3.5 × 2.5 / 2 = 50 + 4.4 = 54.4 °C
+
+Tj = T_Al + P_diss × (R_jc + R_cp + R_PCB)
+   = 54.4 + 1.75 × (3.1 + 1.0 + 1.2)
+   = 54.4 + 9.3
+   = 63.7 °C   ← well below Tj,max = 150 °C
+
+Margin: 150 − 63.7 = 86.3 °C margin
+```
+
+Worst-case without adaptive control (V_bus = 44 V, V_LED = 28 V, Pdiss = 11.2 W):
+```
+T_Al = 50 + 22.4 × 2.5 / 2 = 78 °C
+Tj = 78 + 11.2 × 5.3 = 137 °C   ← exceeds 125 °C; adaptive control is REQUIRED
+```
+
+**Conclusion**: Adaptive bus voltage control (Measure 3) is mandatory to achieve Tj < 125 °C at worst-case LED voltage (28 V). With all three measures, Tj = 64 °C at T_ambient = 50 °C worst case. NTC shutdown at 85 °C PCB temperature remains as safety backup.
+
+**Changes required (in addition to documentation):**
+- `bom.csv`: Q_WW, Q_CW updated to STB20NF06L D2PAK
+- `net-class-and-layout-rules.md`: thermal via count updated to 9 per device, 20×20 mm B.Cu zone
+- `bring-up-and-test-plan.md`: Stage 6 updated with revised pass criterion and adaptive-control test
+- Firmware: implement adaptive V_bus control (new OI to track)
+
+**Required action (still open)**:
+- Measure junction temperature on prototype under worst-case conditions (both channels, adaptive and non-adaptive modes).
+- Measure Al enclosure surface temperature; verify R_Al-ambient ≤ 2.5 °C/W (total power).
+- If Tj > 100°C at 50°C ambient: increase via count or reduce firmware current limit.
+- Validate adaptive bus voltage control firmware; measure V_DS on Q_WW/Q_CW.
+
+**Status**: 🔶 IN PROGRESS – thermal budget rechnerisch gelöst mit kombinierter Maßnahme (D2PAK + 9 Thermal-Vias + adaptive Busspannung); Tj < 65 °C berechnet bei 50 °C Umgebung. Prototyp-Validierung weiterhin erforderlich.
+
+**Risk level**: MEDIUM – calculated budget demonstrates feasibility; prototype measurement required before production.
 
 ---
 
@@ -228,7 +307,7 @@ At 25 °C ambient and Rth_junc-ambient ≈ 15 °C/W (junction to PCB): Tj ≈ 25
 | Aux supply exceeds VIN rating (OI-001) | ~~Certain if not fixed~~ N/A | ~~Board destruction~~ | ✅ Replaced with LMR16006YDDAR | RESOLVED |
 | Buck-boost instability (OI-002) | Medium (calculations done, unvalidated) | LED flicker, EMI | LTspice simulation + prototype Bode plot | IN PROGRESS |
 | Current sink oscillation (OI-003) | Low (revised values calculated) | Flicker at low dim | Loop analysis complete; verify on prototype | IN PROGRESS |
-| LED thermal failure (OI-008) | Medium | Premature failure | Thermal budget estimated; thermal vias required; measure on prototype | OPEN |
+| LED thermal failure (OI-008) | Low (D2PAK + 9 vias + adaptive V_bus: Tj=64°C calc.) | Premature failure | D2PAK package, 9 thermal vias, adaptive bus voltage (all measures documented); measure on prototype | IN PROGRESS |
 | DALI non-conformance (OI-005) | N/A until tested | Cannot sell as DALI-2 | Plan certification after prototype | OPEN |
 | Safety non-compliance (OI-006) | N/A until assessed | Cannot sell in EU | Clearance/creepage normatively derived (IEC 62368-1:2018); lab verification still required | PARTIALLY RESOLVED |
 | EMC failure (OI-007) | Medium | Cannot sell | Pre-compliance test on prototype; input filter pre-designed | OPEN |

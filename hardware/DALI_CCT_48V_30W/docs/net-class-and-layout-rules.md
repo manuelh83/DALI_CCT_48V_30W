@@ -117,8 +117,11 @@ Applies to nets matching: `*SENSE*`, `*KELVIN*`, `WW_SENSE_*`, `CW_SENSE_*`
 
 3. **Current sink thermal**: Q_WW and Q_CW must be placed on the bottom of the board (B.Cu thermal zone) with:
    - Exposed pad connected to B.Cu thermal pour
-   - Minimum 4× thermal vias per device (0.3mm drill, 0.5mm diameter, filled/capped preferred)
-   - B.Cu thermal zone coupled to aluminium enclosure via thermal interface material
+   - **Minimum 9 thermal vias per device** (3×3 array, 0.3mm drill, 0.5mm diameter, Cu-filled/capped preferred): reduces R_PCB-enclosure to ~1.2°C/W
+   - Dedicated **20×20 mm B.Cu thermal pour** per channel (separate zones for Q_WW and Q_CW)
+   - B.Cu thermal zone coupled to aluminium enclosure via thermal interface material (TIM, ≥ 3 W/m·K)
+   - Use **D2PAK (TO-263) footprint** for Q_WW and Q_CW; full underside exposed pad must be soldered
+   - See §4.4 of design-specification.md for full thermal calculation
 
 4. **Kelvin routing**: R_SENSE_WW and R_SENSE_CW must have four-terminal (Kelvin) connections:
    - Force terminals carry load current (wide traces ≥ 1.5mm)

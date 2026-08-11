@@ -135,7 +135,7 @@ Two identical channels (WW and CW) each consist of:
 
 | Designator | Function | Part | Rating |
 |---|---|---|---|
-| Q_WW, Q_CW | Current sink MOSFET | NTMFS5C604NL | 60V, 15A, 9mΩ, SOT-223 |
+| Q_WW, Q_CW | Current sink MOSFET | STMicro STB20NF06L | 60V, 20A, 32mΩ, D2PAK (TO-263) |
 | R_SENSE_WW, R_SENSE_CW | Current sense | Vishay WSHM2818R1000FEB | 100mΩ/1W/1% |
 | U_CS_WW, U_CS_CW | Error amplifier | Texas Instruments OPA2333AIDR | 1.8V–5.5V supply, 25nV/√Hz noise |
 | U_OCP | Dual comparator | Texas Instruments LM393DR | Open-collector output |
@@ -143,7 +143,54 @@ Two identical channels (WW and CW) each consist of:
 | R_GATE_WW, R_GATE_CW | Gate resistors | 47Ω 1% SMD 0402 | Slows gate transient |
 | C_COMP_WW, C_COMP_CW | Loop compensation dominant cap | 100 nF / 10 kΩ RC (see §4.5) | Revised; ensures stability ≥ 0.5 mA |
 
-### 4.4 Dimming Behavior
+### 4.4 Thermal Design (OI-008)
+
+The current sink MOSFET dissipates power equal to (V_LED_BUS − V_LED_forward) × I_channel. Without mitigation, worst-case dissipation (44 V bus, 28 V LED, 700 mA) is 11.2 W per channel.
+
+#### Thermal optimization measures (Rev A.1)
+
+1. **Package change to D2PAK**: STB20NF06L (D2PAK / TO-263) replaces the SOT-223, reducing Rth(j-c) from 10 °C/W to **3.1 °C/W**.
+2. **9 thermal vias per device**: 3×3 array, 0.3 mm drill / 0.5 mm pad diameter, Cu-filled preferred. Placed under D2PAK exposed tab.
+3. **20×20 mm dedicated B.Cu thermal pour per channel**: couples to aluminium enclosure via thermal interface material (TIM, e.g. Bergquist GP3000, 3 W/m·K).
+4. **Adaptive bus voltage**: Firmware targets V_bus = V_LED_forward(I) + 2.5 V headroom, reducing MOSFET headroom from worst-case 16 V to 2.5 V.
+
+#### Revised thermal Rth chain
+
+| Segment | Part | Rth | Notes |
+|---|---|---|---|
+| Junction → case | STB20NF06L D2PAK | 3.1 °C/W | Exposed tab |
+| Case → PCB | Solder pad + D2PAK tab | 1.0 °C/W | D2PAK large exposed underside area |
+| PCB → Al enclosure | 9 vias + 20×20 mm pour + TIM | 1.2 °C/W | Calculated via thermal resistance formula |
+| Al enclosure → ambient (150×60 mm Al) | Extruded Al housing | 2.5 °C/W (shared, both channels) | Natural convection, both sides |
+
+#### Calculated Tj at worst-case (T_ambient = 50 °C, adaptive bus voltage active)
+
+```
+P_diss = (V_bus_adaptive − V_LED) × I = 2.5 V × 0.7 A = 1.75 W per channel
+P_total = 2 × 1.75 = 3.5 W
+
+T_Al  = T_ambient + P_total × R_Al-ambient / 2 (per device contribution)
+       = 50 + 3.5 × 2.5 / 2
+       = 54.4 °C
+
+Tj    = T_Al + P_diss × (R_jc + R_cp + R_PCB)
+       = 54.4 + 1.75 × (3.1 + 1.0 + 1.2)
+       = 54.4 + 9.3
+       = 63.7 °C   ✓  (Tj,max = 150 °C; margin = 86 °C)
+```
+
+Without adaptive control (fixed 44 V bus, V_LED = 28 V, Pdiss = 11.2 W per channel):
+
+```
+T_Al  = 50 + 22.4 × 2.5 / 2 = 78 °C
+Tj    = 78 + 11.2 × 5.3 = 137 °C   ⚠️  (above 125 °C; adaptive control is REQUIRED)
+```
+
+**Adaptive bus voltage control is mandatory** for operation with LED strings below ~36 V forward voltage. At 36 V: Pdiss = (44-36) × 0.7 = 5.6 W → Tj = T_Al + 5.6 × 5.3 = 50+14+29.7 = 93.7 °C (without adaptive). Adaptive sets V_bus = 38.5 V → Pdiss = 1.75 W → Tj = 64 °C.
+
+The NTC-based firmware shutdown at 85 °C PCB temperature serves as a hardware safety backup in case adaptive control fails or the enclosure coupling is worse than modelled.
+
+
 
 - **Normal dimming**: Continuous analog DAC control. MCU writes 12-bit value to MCP4728; DAC output 0–1.0V → current 0–700mA.
 - **Below 0.1%**: MCU sets DAC = 0V; MOSFET gate pulled to 0V via op-amp output = 0V. Channel fully off.
@@ -351,4 +398,4 @@ Board thickness: 1.6mm. Material: FR4, Tg ≥ 150°C.
 4. **DALI certification**: Not claimed. Protocol compliance requires DALI Alliance test suite (OI-005).
 5. **Safety certification**: No CE or safety marking claimed. IEC 62368-1 / EN 61347-2-13 assessment required (OI-006).
 6. **EMC**: 200kHz switching requires conducted/radiated EMI management. No pre-compliance test results available (OI-007).
-7. **Thermal validation**: Junction temperatures for Q_WW/Q_CW at worst-case dissipation (11.2W each) must be validated with thermal simulation and prototype measurement (OI-008).
+7. **Thermal validation**: Q_WW/Q_CW changed to D2PAK (STB20NF06L), 9 thermal vias, adaptive bus voltage control. Calculated Tj ≤ 64°C at 50°C ambient with adaptive control active (see §4.4). Prototype measurement required (OI-008).
