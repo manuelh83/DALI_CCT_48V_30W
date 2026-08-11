@@ -271,32 +271,72 @@ Tj = 78 + 11.2 × 5.3 = 137 °C   ← exceeds 125 °C; adaptive control is REQUI
 
 ---
 
-### OI-011 [OPEN] Schematic Symbol/Netlist Completion
+### OI-011 [PARTIALLY RESOLVED] Schematic Symbol/Netlist Completion
 
-**Description**: The Rev A `.kicad_sch` file contains functional text descriptions and net lists rather than full KiCad symbol-and-wire schematics.
+**Description**: The Rev A `.kicad_sch` file contained functional text descriptions and net lists rather than full KiCad symbol-and-wire schematics.
 
-**Required action**:
-- Import all component symbols from KiCad standard libraries and vendor libraries.
-- Draw all circuit connections as wires and bus connections.
-- Add pin labels, power symbols, and no-connect markers.
-- Run KiCad ERC; document and resolve all errors.
-- Assign footprints from `docs/bom.csv` to all symbols.
+**Resolution (partial – Rev A.1):**
 
-**Status**: 🔲 OPEN – first priority for Rev A PCB work. Prerequisite for OI-012.
+All **85 BOM components** have been added as proper KiCad symbol instances to the schematic file, including:
+
+| Block | Components added as symbol instances |
+|---|---|
+| Input protection | J1, F1, TV1, D1 (MOSFET_P), C1, C2, C3, L1 |
+| Buck-boost LED bus | U_BB (LT8390A/Device:IC), Q1–Q4, L2, C4–C7, R_CS_H/L, R_FB1/2, C_ITH, R_ITH, C_ITH2, R_SLOPE |
+| Current sinks (WW/CW) | Q_WW, Q_CW (D2PAK/Device:MOSFET_N), R_SENSE_WW/CW, U_CS_WW/CW, U_OCP, U_DAC, C_COMP/HF/R_COMP/R_GATE |
+| LED output | J3 |
+| Aux PSU | U_AUX1, U_LDO, C_AUX_IN/OUT, R_AUX_FB1/2, C_LDO_IN/OUT, C_5VDALI |
+| MCU & NVM | U_MCU (STM32G031), U_EEP (AT24C32E), C_MCU1–3, FB1, C_VDDA, R_I2C_SCL/SDA, C_NRST, SJ1, R_BOOT0, LED_STATUS, LED_FAULT, R_STATUS, R_FAULT, J4 |
+| NTC & ADC dividers | NTC1, R_NTC_PULL, J_NTC, R_VBUS1/2, R_VIN1/2 |
+| DALI isolation | J2, TVS_DALI, D_ESD1, U_ISO_DALI, C_DALI1/2 |
+| Power flags (ERC) | #PWR01 (GND), #PWR02 (+3.3V), #PWR03 (+5V) |
+
+All symbols include: Reference designator, Value, Footprint assignment (matching bom.csv), MPN (hidden property).
+
+New lib_symbols inline definitions added for: Device:Fuse, Device:D_TVS, Device:D_Schottky, Device:LED, Device:CP, Device:MOSFET_N, Device:MOSFET_P, Device:OPAMP, Device:LM393, Device:IC (generic multi-pin), Device:EEPROM_I2C, Device:Ferrite_Bead, Device:R_Thermistor_NTC, Device:Jumper_NO_Small, Connector_Generic:Conn_01x02/03/04, power:+5V, power:PWR_FLAG.
+
+**Remaining actions (open):**
+1. **Wire-up in KiCad 8 GUI**: Symbol instances are placed with net pins exposed; wire connections between pins need to be drawn using KiCad schematic editor. Use the net list in the existing text blocks as the connection guide.
+2. **Run KiCad ERC** after wiring; resolve any remaining errors (unconnected pins, power pin conflicts).
+3. Assign any remaining footprints for custom parts that use the generic Device:IC symbol (library footprint links).
+
+**Known ERC warnings (pre-wiring):**
+- All IC and connector pins show "unconnected" until wires are drawn (expected pre-wiring state).
+- Power flags placed on GND, +3.3V, +5V rails; additional flags may be needed on +48V and LED bus rails.
+- Generic Device:IC symbol is used for complex ICs (LT8390A, STM32G031, MCP4728, UBA2015, LMR16006, AP2112K) — custom library symbols with exact pinouts are recommended for production.
+
+**Status**: 🔶 PARTIALLY RESOLVED – all 85 BOM symbols instantiated with values, footprints, and MPNs; wire-by-wire routing and ERC run require KiCad 8 GUI.
+
+**Prerequisite for OI-012**: Import netlist after completing wiring.
 
 ---
 
-### OI-012 [OPEN] PCB Component Placement
+### OI-012 [IN PROGRESS] PCB Component Placement
 
-**Description**: The Rev A `.kicad_pcb` file contains board outline, mounting holes, connector placeholders, zone definitions, and layout region annotations. Full component placement is not complete.
+**Description**: The Rev A `.kicad_pcb` file contained board outline, mounting holes, connector placeholders, zone definitions, and layout region annotations. Full component placement was not complete.
 
-**Required action**:
-- Import netlist after completing schematic (OI-011).
-- Place all components per placement guidelines in `net-class-and-layout-rules.md`.
-- Run KiCad DRC; document and resolve violations.
-- Complete routing of critical nets; document unfinished connections.
+**Resolution (partial – Rev A.1):**
 
-**Status**: 🔲 OPEN – pending OI-011 completion.
+The PCB file has been updated with the following additions:
+
+1. **D2PAK footprints for Q_WW and Q_CW**: The current-sink MOSFETs are now represented as proper `TO-263-3_TabDown` D2PAK footprints at their target positions on B.Cu (bottom layer for thermal coupling), replacing the previous SOT-223 assumption. Net assignments: drain/tab = WW-/CW-, source = PGND, gate = unconnected pending netlist import.
+
+2. **9 thermal vias per device**: 3×3 via arrays (0.3mm drill / 0.5mm pad) placed under each D2PAK exposed tab, connecting F.Cu to B.Cu for heat extraction.
+
+3. **20×20mm B.Cu thermal zones**: Dedicated filled copper zones per channel (Q_WW thermal zone on net WW-; Q_CW on net CW-) to spread heat to the aluminium enclosure via TIM. Zones are independent to avoid cross-channel thermal coupling.
+
+4. **Updated isolation barrier silkscreen**: Label updated to `ISO BARRIER: CLR>=2mm / CRG>=5mm / ZONE=8mm (IEC 62368-1:2018)` reflecting the normative derivation from Step 1.
+
+5. **Existing connectors and mounting holes**: J1–J4 connector footprints, 4× M3 mounting holes, and all annotation zones (isolation keepout, switching region, thermal region) remain from Rev A.
+
+**Remaining actions (open):**
+1. Import netlist from schematic after OI-011 wiring completion.
+2. Place all remaining 40+ component footprints (passives, ICs) per placement guidelines in `net-class-and-layout-rules.md`.
+3. Route all nets per DRC rules (PWR_HV ≥2.0mm, PWR_LED ≥1.5mm, DALI_ISO ≥8mm keepout, Kelvin routing for sense lines).
+4. Run KiCad DRC; document and resolve violations.
+5. Add silkscreen labels for all components, polarity markers, and test points.
+
+**Status**: 🔶 IN PROGRESS – D2PAK footprints for Q_WW/Q_CW with thermal vias/zones added; full placement, routing, and DRC require KiCad 8 GUI and completed netlist from OI-011.
 
 ---
 
