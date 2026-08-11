@@ -25,7 +25,7 @@ R_SENSE_CW,1,Current sense 100mohm 1W 1%,Vishay WSHM2818R1000FEB,2818 (7145M),�
 U_CS_WW,1,Precision dual op-amp rail-to-rail 1.8V-5.5V,Texas Instruments OPA2333AIDR,SOIC-8,5.5V,—,OPA2335 (lower noise); LTC2063
 U_CS_CW,1,Precision dual op-amp rail-to-rail,Texas Instruments OPA2333AIDR,SOIC-8,5.5V,—,OPA2335
 U_OCP,1,Dual comparator open-collector,Texas Instruments LM393DR,SOIC-8,36V,—,LM2903DR (wider temp range)
-U_DAC,1,16-bit quad I2C DAC 5V,Microchip MCP4728A0T-E/UN,MSOP-10,5.5V,—,DAC7574 (TI 12-bit quad); AD5624R
+U_DAC,1,12-bit quad I2C DAC 5V,Microchip MCP4728A0T-E/UN,MSOP-10,5.5V,—,DAC7574 (TI 12-bit quad); AD5624R
 U_AUX1,1,Sync buck 60V in 5V out 600mA,Texas Instruments LMR16006YDDAR,SOT-23-5,60V,600mA,LMR14206XMFE (TI alt); AP65150A-U
 U_LDO,1,LDO 3.3V 600mA,Diodes Inc AP2112K-3.3TRG1,SOT-23-5,6V,600mA,MCP1700T-3302E/TT; XC6210B332MR
 U_ISO_DALI,1,DALI slave controller IC,NXP UBA2015T/N1,SO-8,—,—,Alternatively: IS181XBHTR optocoupler (IXYS) + discrete driver

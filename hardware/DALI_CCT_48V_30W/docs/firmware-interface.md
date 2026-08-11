@@ -43,7 +43,7 @@ The firmware runs on a STM32G031K8T6 (ARM Cortex-M0+, 64MHz, 64KB flash, 8KB SRA
 
 | Device | I2C Address | Function |
 |---|---|---|
-| MCP4728 | 0x60 | 16-bit quad DAC for WW/CW setpoints |
+| MCP4728 | 0x60 | 12-bit quad DAC for WW/CW setpoints |
 | AT24C32E | 0x50 | EEPROM for DALI NVM |
 
 ---
@@ -275,7 +275,7 @@ The specification requires 0.1 % dimming (1:1000 ratio), corresponding to 0.7 mA
 | OPA2333 input offset (max, 25°C) | 10 µV | 0.10 mA |
 | OPA2333 input offset drift (max, −40 to +85°C) | 0.05 µV/°C × 60°C | +0.03 mA |
 | MCP4728 zero-code output (max) | 0.5 mV | 5.0 mA |
-| MCP4728 INL (max, 16-bit) | 2 LSB = 0.031 mV | 0.31 mA |
+| MCP4728 INL (max, 12-bit) | 2 LSB = 0.488 mV | 0.49 mA |
 | PCB leakage / sense resistor offset | < 10 µV | < 0.10 mA |
 | **Total (worst-case, RSS)** | | **≈ 5.1 mA** |
 

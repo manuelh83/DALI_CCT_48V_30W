@@ -139,18 +139,18 @@ Two identical channels (WW and CW) each consist of:
 | R_SENSE_WW, R_SENSE_CW | Current sense | Vishay WSHM2818R1000FEB | 100mΩ/1W/1% |
 | U_CS_WW, U_CS_CW | Error amplifier | Texas Instruments OPA2333AIDR | 1.8V–5.5V supply, 25nV/√Hz noise |
 | U_OCP | Dual comparator | Texas Instruments LM393DR | Open-collector output |
-| U_DAC | 16-bit quad I2C DAC | Microchip MCP4728A0T-E/UN | 16-bit, 4-channel, I2C, 5V rail |
+| U_DAC | 12-bit quad I2C DAC | Microchip MCP4728A0T-E/UN | 12-bit, 4-channel, I2C, 5V rail |
 | R_GATE_WW, R_GATE_CW | Gate resistors | 47Ω 1% SMD 0402 | Slows gate transient |
-| C_COMP_WW, C_COMP_CW | Loop compensation dominant cap | 100 nF / 10 kΩ RC (see §4.6) | Revised; ensures stability ≥ 0.5 mA |
+| C_COMP_WW, C_COMP_CW | Loop compensation dominant cap | 100 nF / 10 kΩ RC (see §4.5) | Revised; ensures stability ≥ 0.5 mA |
 
 ### 4.4 Dimming Behavior
 
-- **Normal dimming**: Continuous analog DAC control. MCU writes 16-bit value to MCP4728; DAC output 0–1.0V → current 0–700mA.
+- **Normal dimming**: Continuous analog DAC control. MCU writes 12-bit value to MCP4728; DAC output 0–1.0V → current 0–700mA.
 - **Below 0.1%**: MCU sets DAC = 0V; MOSFET gate pulled to 0V via op-amp output = 0V. Channel fully off.
 - **PWM usage**: None in normal dimming. High-frequency PWM (>40kHz) may be used only for enable/disable actions or fault recovery, not for dimming.
 - **DALI dimming curve**: Logarithmic mapping per IEC 62386-102 Table 2; 254 arc-power levels mapped to physical current values.
 
-### 4.6 Current Sink Loop Compensation Analysis (OI-003)
+### 4.5 Current Sink Loop Compensation Analysis (OI-003)
 
 The linear current sink forms a feedback loop:
 
@@ -205,7 +205,7 @@ f_hf = 1 / (2π × R_comp × C_hf) ≈ 160 kHz
 3. If oscillation appears at low current: increase C_comp to 220 nF (fp = 72 Hz).
 4. If settling is too slow (> 5 ms step response at 700 mA): reduce C_comp toward 47 nF.
 
-
+### 4.6 Safe-Default Behavior
 
 - On MCU power-up: DAC defaults to 0V output (all channels off).
 - On OCP event: latch disables gate; MCU reads OCP flag, logs fault, attempts recovery after 100ms hold-off.

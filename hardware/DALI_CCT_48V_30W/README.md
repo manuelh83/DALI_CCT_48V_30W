@@ -46,7 +46,7 @@ A production-oriented KiCad 8+ reference design for a **48 V SELV, 30 W maximum,
     │     C1,C2: 100µF/63V bulk caps + EMI filter
     │
     ├── BLOCK 4: Auxiliary Supply 48V→5V→3.3V
-    │     U_AUX1: LMR14020SDDA synchronous buck (5V/2A)
+    │     U_AUX1: LMR16006YDDAR synchronous buck (5V/600mA)
     │     U_LDO: AP2112K-3.3 LDO (3.3V/600mA)
     │
     ├── BLOCK 2: 4-Switch Synchronous Buck-Boost LED Bus
