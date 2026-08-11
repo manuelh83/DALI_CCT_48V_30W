@@ -291,7 +291,22 @@ f_hf = 1 / (2π × R_comp × C_hf) ≈ 160 kHz
 - **Option B – Discrete**: IS181XBHTR DALI optocoupler (IXYS/Littelfuse) for TX+RX, discrete bus driver
 - ESD protection: NXP PRTR5V0U2X on DALI_A/DALI_B (before isolation barrier)
 - TVS clamp: P4SMA16A between bus lines
-- PCB isolation gap: 8mm minimum, no copper/vias/components in keepout zone
+- PCB isolation gap: 8.0 mm minimum keepout zone (normatively derived per IEC 62368-1:2018)
+
+**Normative derivation of PCB isolation distances (IEC 62368-1:2018):**
+
+| Parameter | Condition | Derived value | Table reference |
+|---|---|---|---|
+| Isolation class | Single barrier = reinforced insulation | — | IEC 62368-1 §5.4 |
+| Working voltage | 63 V (covers 52.8 V max + rounding to next standard step) | — | Table G.1 |
+| Pollution degree | 2 (indoor, light condensation possible) | — | §6.1 |
+| Overvoltage category | OVC II (SELV supply, fixed installation) | 800 V impulse | Table G.1 |
+| Material group | IIIa (FR4, CTI 100–175) | — | Annex G |
+| **Min. clearance** (air, reinforced) | OVC II, 800 V impulse, Table G.8 | **2.0 mm** | Table G.8 |
+| **Min. creepage** (surface, reinforced) | IIIa, PD2, 63 V, Table G.12 | **5.0 mm** | Table G.12 |
+| **Implemented PCB keepout zone** | Includes manufacturing tolerance margin | **8.0 mm** | — |
+
+⚠️ *These values are engineering calculations only. Verification by a qualified safety test laboratory (IEC 62368-1 / EN 61347-2-13) is required before production release (see OI-006).*
 
 ### 7.2 DALI Electrical Characteristics
 

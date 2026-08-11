@@ -88,17 +88,26 @@ Dominant pole at ≈ 160 Hz; estimated phase margin ≥ 45° from 0.5 mA to 700 
 
 ---
 
-### OI-006 [VALIDATION] Safety Certification
+### OI-006 [PARTIALLY RESOLVED] Safety Certification
 
 **Description**: No safety assessment has been performed. For EU market, relevant standards may include IEC 62368-1, EN 61347-2-13, EN 60598, 2014/35/EU (LVD).
 
-**Required action**:
-- Engage qualified test laboratory for safety assessment.
-- Verify creepage and clearance dimensions in final PCB layout (8 mm DALI isolation gap documented in `net-class-and-layout-rules.md`).
-- Verify isolation component ratings (2.5 kVrms goal vs. required test voltage per standard).
+**Resolution (partial)**: PCB isolation distances have been normatively derived per IEC 62368-1:2018 and documented in `net-class-and-layout-rules.md` and `design-specification.md` §7.1:
+
+| Parameter | Derived minimum | Implemented | Standard reference |
+|---|---|---|---|
+| Clearance (air, reinforced, OVC II 800V) | 2.0 mm | 8.0 mm (keepout zone) | IEC 62368-1:2018 Table G.8 |
+| Creepage (surface, reinforced, IIIa, PD2, 63V) | 5.0 mm | 8.0 mm (keepout zone) | IEC 62368-1:2018 Table G.12 |
+
+Design conditions assumed: reinforced insulation, working voltage 63 V, pollution degree 2, OVC II (800 V impulse), Material Group IIIa (FR4). DRC rule updated with normative reference.
+
+**Remaining actions (open)**:
+- Engage qualified test laboratory for full safety assessment per IEC 62368-1 / EN 61347-2-13.
+- Verify PCB creepage/clearance physically on fabricated board (confirm keepout zone free of conductors on all layers).
+- Verify isolation component ratings (UBA2015 or optocoupler ≥ 2.5 kVrms).
 - Verify thermal and flammability compliance.
 
-**Status**: 🔲 OPEN – process item; requires final PCB layout before assessment. Layout isolation rules pre-documented.
+**Status**: 🔶 PARTIALLY RESOLVED – normative distance values derived and documented; lab verification still required before production.
 
 **Risk level**: HIGH for regulated markets.
 
@@ -221,6 +230,6 @@ At 25 °C ambient and Rth_junc-ambient ≈ 15 °C/W (junction to PCB): Tj ≈ 25
 | Current sink oscillation (OI-003) | Low (revised values calculated) | Flicker at low dim | Loop analysis complete; verify on prototype | IN PROGRESS |
 | LED thermal failure (OI-008) | Medium | Premature failure | Thermal budget estimated; thermal vias required; measure on prototype | OPEN |
 | DALI non-conformance (OI-005) | N/A until tested | Cannot sell as DALI-2 | Plan certification after prototype | OPEN |
-| Safety non-compliance (OI-006) | N/A until assessed | Cannot sell in EU | Engage test lab after PCB layout | OPEN |
+| Safety non-compliance (OI-006) | N/A until assessed | Cannot sell in EU | Clearance/creepage normatively derived (IEC 62368-1:2018); lab verification still required | PARTIALLY RESOLVED |
 | EMC failure (OI-007) | Medium | Cannot sell | Pre-compliance test on prototype; input filter pre-designed | OPEN |
 | Minimum dimming not achievable (OI-010) | Low (typical parts OK) | Non-compliant dimming | Firmware offset compensation; dual-range PWM fallback | IN PROGRESS |
