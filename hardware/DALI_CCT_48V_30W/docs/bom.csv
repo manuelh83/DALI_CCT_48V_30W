@@ -1,0 +1,44 @@
+Designator,Quantity,Value/Description,Manufacturer Part Number,Package/Footprint,Rated Voltage,Rated Current,Approved Alternates
+F1,1,Fuse 1A/63V slow-blow SMD,Littelfuse 0452001.MRL,0402 (1005M),63V,1A,Bourns SF-0402HI1A0,Schurter 0402 1A 63V
+D1,1,P-ch MOSFET for reverse polarity 60V 4A,Vishay Si2333DS,SOT-23,60V,4A,AO3401A (P-ch 30V - limited); for 60V use Si2333DS
+TV1,1,TVS bidirectional 60V 600W,Littelfuse SMAJ60A,SMA (DO-214AC),60V,600W peak,P6KE60A (axial); Vishay P6SMB60A (SMB)
+C1,1,100uF/63V electrolytic radial,Panasonic EEU-FR1J101,5mm dia / 11mm H radial,63V,—,Nichicon UHE1J101MPD,Rubycon 63YXJ100M
+C2,1,100uF/63V electrolytic radial,Panasonic EEU-FR1J101,5mm dia / 11mm H radial,63V,—,Nichicon UHE1J101MPD
+C3,1,4.7uF/63V MLCC X7R,Murata GRM31CR61E475KA88L,1206 (3216M),63V,—,TDK C3216X7R1E475K160AB
+L1,1,Common-mode choke 10uH 2A,TDK ACM2520-201-2P-T,SMD 2520,—,2A per line,Wurth 742792510 (alternate size)
+U_BB,1,4-switch sync buck-boost controller,Analog Devices LT8390AIFE,TSSOP-28,60V,—,LT8392 (alternate; lower freq range)
+Q1,1,N-ch MOSFET 30V 25A (buck high-side),Alpha & Omega AON7534,DFN-3x3,30V,25A,Si7336ADP (30V 30A); Infineon BSZ066N03
+Q2,1,N-ch MOSFET 30V 25A (buck low-side),Alpha & Omega AON7534,DFN-3x3,30V,25A,Si7336ADP
+Q3,1,N-ch MOSFET 40V 20A (boost high-side),Alpha & Omega AON6424,DFN-3x3,40V,20A,Si7464DP (40V 22A)
+Q4,1,N-ch MOSFET 40V 20A (boost low-side),Alpha & Omega AON6424,DFN-3x3,40V,20A,Si7464DP
+L2,1,Shielded power inductor 47uH 3A,Bourns SRR1260-470M,SMD 12.5x12x6mm,—,3A,TDK SLF12565T-470M3R0-PF; Wurth 7447714700
+C4,1,47uF/63V electrolytic,Panasonic EEU-FR1J470,5mm dia / 11mm H radial,63V,—,Nichicon UHE1J470MHD
+C5,1,47uF/63V electrolytic,Panasonic EEU-FR1J470,5mm dia / 11mm H radial,63V,—,Nichicon UHE1J470MHD
+C6,1,47uF/63V electrolytic,Panasonic EEU-FR1J470,5mm dia / 11mm H radial,63V,—,Nichicon UHE1J470MHD
+C7,1,4.7uF/63V MLCC X7R,Murata GRM31CR61E475KA88L,1206 (3216M),63V,—,TDK C3216X7R1E475K160AB
+R_CS_H,1,Current sense 10mohm 1W 1%,Vishay WSBS2515R0100FEA,2512 (6332M),—,1W current sense,Bourns CSS2H-2512R-L100F
+R_CS_L,1,Current sense 10mohm 1W 1%,Vishay WSBS2515R0100FEA,2512 (6332M),—,1W current sense,Bourns CSS2H-2512R-L100F
+Q_WW,1,N-ch MOSFET 60V 15A current sink,ON Semi NTMFS5C604NL,SOT-223,60V,15A,Vishay SiS460DN (60V 20A); IPT015N06N
+Q_CW,1,N-ch MOSFET 60V 15A current sink,ON Semi NTMFS5C604NL,SOT-223,60V,15A,Vishay SiS460DN
+R_SENSE_WW,1,Current sense 100mohm 1W 1%,Vishay WSHM2818R1000FEB,2818 (7145M),—,1W,Bourns CSS4J-4026R-1L00F
+R_SENSE_CW,1,Current sense 100mohm 1W 1%,Vishay WSHM2818R1000FEB,2818 (7145M),—,1W,Bourns CSS4J-4026R-1L00F
+U_CS_WW,1,Precision dual op-amp rail-to-rail 1.8V-5.5V,Texas Instruments OPA2333AIDR,SOIC-8,5.5V,—,OPA2335 (lower noise); LTC2063
+U_CS_CW,1,Precision dual op-amp rail-to-rail,Texas Instruments OPA2333AIDR,SOIC-8,5.5V,—,OPA2335
+U_OCP,1,Dual comparator open-collector,Texas Instruments LM393DR,SOIC-8,36V,—,LM2903DR (wider temp range)
+U_DAC,1,12-bit quad I2C DAC 5V,Microchip MCP4728A0T-E/UN,MSOP-10,5.5V,—,DAC7574 (TI 12-bit quad); AD5624R
+U_AUX1,1,Sync buck 60V in 5V out 600mA,Texas Instruments LMR16006YDDAR,SOT-23-5,60V,600mA,LMR14206XMFE (TI alt); AP65150A-U
+U_LDO,1,LDO 3.3V 600mA,Diodes Inc AP2112K-3.3TRG1,SOT-23-5,6V,600mA,MCP1700T-3302E/TT; XC6210B332MR
+U_ISO_DALI,1,DALI slave controller IC,NXP UBA2015T/N1,SO-8,—,—,Alternatively: IS181XBHTR optocoupler (IXYS) + discrete driver
+D_ESD1,1,Dual ESD protection TVS,NXP PRTR5V0U2X,SOT-363,5V clamp,—,CDSOT23-SM712; SP0502BAHT (5.5V)
+TVS_DALI,1,TVS 16V unidirectional,Vishay P4SMA16A,SMA (DO-214AC),16V,400W peak,P4KE16A (axial)
+U_MCU,1,MCU ARM Cortex-M0+ 64KB flash,ST STM32G031K8T6,LQFP-32 (7x7mm),3.6V,—,STM32G031K6T6 (32KB); STM32G041K8T6 (w/ HW crypto)
+U_EEP,1,I2C EEPROM 4KB 1M cycles,Microchip AT24C32E-SSHM-T,SOIC-8,5.5V,—,M24C32-RCSW6TP (ST); CAT24C32WI-GT3
+NTC1,1,NTC thermistor 100k B3950,Vishay NTCLE100E3104JB0,SMD / connector option,—,—,Murata NCP21XV103J03RA (MELF 100k)
+J_NTC,1,NTC connector 2-pin 2.5mm pitch,JST PHR-2,JST PH 2.0mm 2-pin,—,—,Molex 51021-0200
+J1,1,Screw terminal 2-pin 5.08mm pitch,Phoenix Contact 1935161,5.08mm 2-pin PCB,250V,16A,Wurth 691102710002; METZ 31008T0200
+J2,1,Screw terminal 2-pin 5.08mm pitch,Phoenix Contact 1935161,5.08mm 2-pin PCB,250V,16A,Same as J1
+J3,1,Screw terminal 3-pin 5.08mm pitch,Phoenix Contact 1935174,5.08mm 3-pin PCB,250V,16A,Wurth 691102710003
+J4,1,Pin header SWD 4-pin 1.27mm,Samtec FTSH-104-01-L-DV,1.27mm 4-pin SMD,—,—,Tag-Connect TC2030-IDC-NL (alternate)
+LED_STATUS,1,LED green 0402,Würth 150060VS55040,0402 (1005M),3.3V,—,Kingbright APT1608SGC
+LED_FAULT,1,LED red 0402,Würth 150060RS55040,0402 (1005M),3.3V,—,Kingbright APT1608SEC
+FB1,1,Ferrite bead 600ohm@100MHz,Murata BLM18AG601SN1D,0603 (1608M),25V,2A,Würth 742792060; TDK MMZ1608Y601BT000
