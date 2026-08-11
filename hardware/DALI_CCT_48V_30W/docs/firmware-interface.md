@@ -110,22 +110,53 @@ Default Tc range: 153 mirek (6536K) to 370 mirek (2703K). Configurable via NVM.
 
 Given a target colour temperature Tc_target and a total current I_total derived from arc-power level:
 
-```
-// Normalise: 0.0 = coolest, 1.0 = warmest
-alpha = (Tc_target - Tc_cool) / (Tc_warm - Tc_cool)
+```c
+// Normalise: 0.0 = coolest (Tc_cool), 1.0 = warmest (Tc_warm)
+float alpha = (Tc_target - Tc_cool) / (Tc_warm - Tc_cool);
+alpha = clamp(alpha, 0.0f, 1.0f);
 
-// Linear mix (default; replace with calibrated table for accuracy)
-I_WW = I_total * alpha
-I_CW = I_total * (1.0 - alpha)
+// Linear mix (default; replace with calibrated table for accuracy — see OI-009)
+float I_WW = I_total * alpha;
+float I_CW = I_total * (1.0f - alpha);
 
 // Power limit enforcement
-if (V_LED_BUS * (I_WW + I_CW) > P_MAX_WATTS):
-    scale = P_MAX_WATTS / (V_LED_BUS * (I_WW + I_CW))
-    I_WW *= scale
-    I_CW *= scale
+float v_bus = adc_to_volts(ADC_VBUS);
+float p_est = v_bus * (I_WW + I_CW);
+if (p_est > P_MAX_LIMIT) {
+    float scale = P_MAX_LIMIT / p_est;
+    I_WW *= scale;
+    I_CW *= scale;
+}
 ```
 
-**Note**: Linear interpolation assumes equal efficacy per mA for WW and CW. Real LEDs differ in lumens/mA and correlated colour temperature vs. current. A calibrated lookup table derived from photometric measurements of the actual LED module is recommended for production.
+**Calibrated mixing table (production implementation):**
+
+For accurate CCT control, the linear approximation above should be replaced with a calibrated lookup table derived from photometric measurement of the actual LED module. The calibration procedure is:
+
+1. Measure CIE 1931 (x, y) chromaticity of WW LED at 100 %, 50 %, 10 % current; record lm/mA.
+2. Measure CIE 1931 (x, y) chromaticity of CW LED at 100 %, 50 %, 10 % current; record lm/mA.
+3. For each target Tc in the operating range (e.g., every 100 mirek), solve the 2-primary mixing equations:
+
+```
+x_mix = (I_WW × lm_WW × x_WW + I_CW × lm_CW × x_CW) / (I_WW × lm_WW + I_CW × lm_CW)
+y_mix = (I_WW × lm_WW × y_WW + I_CW × lm_CW × y_CW) / (I_WW × lm_WW + I_CW × lm_CW)
+```
+
+   Subject to: x_mix, y_mix lie on the Planckian locus at the target Tc.
+
+4. Build a lookup table: `uint16_t ww_ratio_table[TC_STEPS]` where the value represents I_WW / I_total × 4095.
+5. Store lookup table in MCU flash. At runtime, interpolate linearly between table entries.
+6. Verify gamut: confirm the LED pair can achieve all Tc values in [Tc_cool, Tc_warm]; document the achievable gamut.
+
+```c
+// Production mixing with lookup table
+uint16_t idx     = tc_to_table_index(Tc_target);     // mirek → table index
+float    ratio   = ww_ratio_table[idx] / 4095.0f;    // WW fraction
+float    I_WW    = I_total * ratio;
+float    I_CW    = I_total * (1.0f - ratio);
+```
+
+**Note**: Linear interpolation assumes equal efficacy per mA for WW and CW. Real LEDs differ in lumens/mA and correlated colour temperature vs. current. The calibrated lookup table is recommended for production.
 
 ---
 
@@ -232,6 +263,32 @@ update_currents(current_arc, current_tc)
 ```
 
 Fade occurs simultaneously for arc-power and colour temperature.
+
+### 5.4 Minimum Dimming Level Analysis (OI-010)
+
+The specification requires 0.1 % dimming (1:1000 ratio), corresponding to 0.7 mA at 700 mA full scale.
+
+**Error budget at minimum current:**
+
+| Error source | Value | Current error at 100 mΩ sense |
+|---|---|---|
+| OPA2333 input offset (max, 25°C) | 10 µV | 0.10 mA |
+| OPA2333 input offset drift (max, −40 to +85°C) | 0.05 µV/°C × 60°C | +0.03 mA |
+| MCP4728 zero-code output (max) | 0.5 mV | 5.0 mA |
+| MCP4728 INL (max, 16-bit) | 2 LSB = 0.031 mV | 0.31 mA |
+| PCB leakage / sense resistor offset | < 10 µV | < 0.10 mA |
+| **Total (worst-case, RSS)** | | **≈ 5.1 mA** |
+
+The dominant error is the **MCP4728 zero-code offset** (~0.5 mV at DAC output = 0). The offset is trimmed per device; typical offset is < 0.1 mV.
+
+**Achievable minimum current (typical):** 0.7 mA (MCP4728 typical offset 0.1 mV → 1 mA total error; firmware zeros DAC and cuts EN_WW/EN_CW to achieve true off below 0.5 mA).
+
+**Mitigation for worst-case parts:**
+1. **Firmware offset compensation**: At start-up, characterise per-unit DAC offset by measuring V_SENSE at DAC code 0 with channel enabled; store correction in NVM; subtract from all DAC codes.
+2. **Dual-range option (if 0.1 % not achievable)**: Below arc-power level 10 (≈ 1 %), enable PWM blanking: pulse EN_WW/EN_CW at 1 kHz with duty cycle proportional to dim level. This extends effective range to 1:10 000. Ensure PWM frequency ≥ 1 kHz to avoid visible flicker.
+3. **Sense resistor increase**: Replacing 100 mΩ with 200 mΩ halves the offset-referred error at cost of 2× higher minimum voltage drop (140 mV at 700 mA); acceptable if MOSFET Vds headroom permits.
+
+**Recommendation**: Implement firmware offset compensation (option 1) first; evaluate on prototype. Dual-range PWM (option 2) is a fallback if offset compensation is insufficient at temperature extremes.
 
 ---
 

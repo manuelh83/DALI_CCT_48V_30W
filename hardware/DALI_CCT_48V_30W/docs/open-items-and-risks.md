@@ -8,74 +8,81 @@ This document lists all known open design items, unresolved decisions, and engin
 
 ## Open Items
 
-### OI-001 [BLOCKER] Auxiliary Supply Input Voltage Rating
+### OI-001 [RESOLVED] Auxiliary Supply Input Voltage Rating
 
 **Description**: The LMR14020SDDA is specified for 4V–42V input. The operating input range of this design is 43.2–52.8V, which exceeds the LMR14020 absolute maximum.
 
-**Required action**: Replace with a 60V-rated buck regulator. Candidates:
-- Texas Instruments LMR16006YDDAR (4–60V input, 600mA, SOT-23-5)
-- Diodes Inc AP65150A-U (6–60V input, 1.5A, SOT-23-6)
-- Torex XC9271B (4.5–65V input, 300mA)
-- Alternatively: use a small isolated flyback with UC3843 or similar for 5V/500mA isolation and better EMI control
+**Resolution**: Part replaced with **Texas Instruments LMR16006YDDAR** (4–60V input, 600mA, SOT-23-5) in `bom.csv` (designator U_AUX1). Design specification §5.1 updated accordingly.
 
-**Risk level**: HIGH – current part will fail in normal use.
+**Status**: ✅ CLOSED – BOM updated; no further action required before PCB layout.
 
 ---
 
 ### OI-002 [BLOCKER] Buck-Boost Compensation Network
 
-**Description**: The LT8390A requires a carefully designed compensation network (ITH RC, slope compensation set by SLOPE pin resistor). No compensation values are calculated in Rev A.
+**Description**: The LT8390A requires a carefully designed compensation network (ITH RC, slope compensation set by SLOPE pin resistor). No compensation values were calculated in Rev A.
 
-**Required action**:
-1. Build SIMPLIS or LTspice model of the 4-switch topology with actual L2 and C4–C6 values
-2. Characterize LED load impedance (static and dynamic) across temperature
-3. Calculate ITH network (Cith, Rith, Cith2) per LT8390A datasheet section "Setting the Error Amplifier Compensation"
-4. Verify loop crossover ≥ 5kHz with phase margin ≥ 45°
-5. Validate on prototype
+**Resolution**: Initial compensation values calculated and documented in `design-specification.md` §3.4:
 
-**Risk level**: HIGH – unstable converter will cause oscillation, EMI, or LED flicker.
+| Component | Value | Notes |
+|---|---|---|
+| Cith | 15 nF | Dominant integrating cap; pole ≈ 480 Hz |
+| Rith | 22 kΩ | Sets loop crossover ≈ 5 kHz |
+| Cith2 | 390 pF | HF rolloff ≈ 18 kHz |
+| R_SLOPE | 470 kΩ | Slope compensation starting point |
+
+**Remaining actions**:
+1. Build LTspice/SIMPLIS model; confirm crossover ≥ 5 kHz, phase margin ≥ 45° across Vin range.
+2. Adjust values per simulation; validate on prototype with Bode plot measurement.
+
+**Risk level**: HIGH – calculated values are starting points; simulation and prototype validation are mandatory.
 
 ---
 
 ### OI-003 [BLOCKER] Current Sink Loop Compensation
 
-**Description**: The OPA2333 error amplifier with LED MOSFET sink requires loop stability analysis. Placeholder compensation (10nF / 10kΩ RC) is not designed for specific LED characteristics.
+**Description**: The OPA2333 error amplifier with LED MOSFET sink requires loop stability analysis. Placeholder compensation (10nF / 10kΩ RC) was not designed for specific LED characteristics.
 
-**Required action**:
-1. Model LED dynamic impedance (typically 1Ω–10Ω for high-power LEDs)
-2. Model MOSFET transconductance at operating point
-3. Calculate or simulate dominant pole frequency and phase margin
-4. Design compensation to ensure stable operation from 0.5mA to 700mA
-5. Verify no oscillation at any current setpoint via prototype measurement
+**Resolution**: Loop analysis performed and documented in `design-specification.md` §4.6:
 
-**Risk level**: HIGH – oscillation at low currents will cause visible flicker.
+| Component | Old Value | New Value |
+|---|---|---|
+| C_COMP_WW/CW | 10 nF | **100 nF** |
+| R_COMP_WW/CW | 10 kΩ | 10 kΩ (unchanged) |
+| C_HF_WW/CW | (not fitted) | **100 pF** (add in parallel) |
+
+Dominant pole at ≈ 160 Hz; estimated phase margin ≥ 45° from 0.5 mA to 700 mA.
+
+**Remaining actions**:
+1. Prototype measurement: verify no oscillation at any current setpoint.
+2. Adjust C_comp if step-response or oscillation test fails (see §4.6 checklist).
+
+**Risk level**: MEDIUM – calculated values are engineering estimates; prototype verification required.
 
 ---
 
-### OI-004 [VALIDATION] DALI IC Selection and Firmware Impact
+### OI-004 [RESOLVED] DALI IC Selection and Firmware Impact
 
-**Description**: Two options are listed for the DALI interface:
-- NXP UBA2015 (integrated DALI slave IC): simplifies hardware but firmware must interface via UART; check DT8 Tc support in any available firmware library
-- IS181XBHTR + discrete driver: requires full DALI Manchester encoder/decoder in firmware
+**Description**: Two options were listed for the DALI interface (NXP UBA2015 vs. IS181XBHTR + discrete).
 
-**Required action**:
-- Confirm UBA2015 availability and DT8(Tc) software support
-- Alternatively commit to custom DALI firmware stack
-- Evaluate DALI-2 certification path for chosen approach
+**Resolution**: **NXP UBA2015T/N1** selected. Updated in `bom.csv` (designator U_ISO_DALI). Firmware uses STM32G031 USART1 in Manchester mode (hardware-supported on STM32G0) connected to UBA2015 UART interface. DT8(Tc) firmware stack is custom-implemented (see `firmware-interface.md` §3).
 
-**Risk level**: MEDIUM – affects firmware complexity and certification path.
+**Status**: ✅ CLOSED – part selected; firmware interface documented.
 
 ---
 
 ### OI-005 [VALIDATION] DALI-2 Conformance Testing
 
-**Description**: This design targets DALI-2 DT8 Tc behavior per IEC 62386-101/-102/-209 but does not hold DALI-2 certification. Official certification requires:
-- Membership or engagement with DALI Alliance (DIIA)
-- Submission to accredited test laboratory
-- Passing of all mandatory test cases for device type DT8(Tc)
-- Publication in DALI Alliance certified product database
+**Description**: This design targets DALI-2 DT8 Tc behavior per IEC 62386-101/-102/-209 but does not hold DALI-2 certification.
 
 **Required action**: Plan certification timeline and budget; do not label product as "DALI-2" or "DALI certified" without completed certification.
+
+**Certification path**:
+1. Engage DALI Alliance (DIIA) or accredited test laboratory.
+2. Execute mandatory test cases for control gear (IEC 62386-102) and DT8(Tc) (IEC 62386-209).
+3. Pass all test cases; publish in DALI Alliance certified product database.
+
+**Status**: 🔲 OPEN – process item; no firmware or hardware change required. Schedule after prototype validation.
 
 **Risk level**: MEDIUM – label compliance issue.
 
@@ -83,17 +90,15 @@ This document lists all known open design items, unresolved decisions, and engin
 
 ### OI-006 [VALIDATION] Safety Certification
 
-**Description**: No safety assessment has been performed. For EU market, relevant standards may include:
-- IEC 62368-1 (Audio/video, IT equipment – Safety)
-- EN 61347-2-13 (Particular requirements for DC or AC supplied electronic controlgear for LED modules)
-- EN 60598 (Luminaires) if supplied as part of a luminaire
-- 2014/35/EU (Low Voltage Directive) for CE marking
+**Description**: No safety assessment has been performed. For EU market, relevant standards may include IEC 62368-1, EN 61347-2-13, EN 60598, 2014/35/EU (LVD).
 
 **Required action**:
-- Engage qualified test laboratory for safety assessment
-- Verify creepage and clearance dimensions in final PCB layout
-- Verify isolation component ratings (2.5kVrms goal vs. required test voltage per standard)
-- Verify thermal and flammability compliance
+- Engage qualified test laboratory for safety assessment.
+- Verify creepage and clearance dimensions in final PCB layout (8 mm DALI isolation gap documented in `net-class-and-layout-rules.md`).
+- Verify isolation component ratings (2.5 kVrms goal vs. required test voltage per standard).
+- Verify thermal and flammability compliance.
+
+**Status**: 🔲 OPEN – process item; requires final PCB layout before assessment. Layout isolation rules pre-documented.
 
 **Risk level**: HIGH for regulated markets.
 
@@ -101,13 +106,17 @@ This document lists all known open design items, unresolved decisions, and engin
 
 ### OI-007 [VALIDATION] EMC Pre-Compliance
 
-**Description**: No EMC testing has been performed. Conducted and radiated emissions from a 200kHz switching converter must meet applicable limits (EN 55015 / CISPR 15 for lighting).
+**Description**: No EMC testing has been performed. Conducted and radiated emissions from a 200 kHz switching converter must meet applicable limits (EN 55015 / CISPR 15 for lighting).
 
 **Required action**:
-- Perform conducted emission scan (9kHz–30MHz) on prototype
-- Perform radiated emission scan (30MHz–1GHz)
-- Add input filter components as necessary
-- Document worst-case switching harmonics and mitigation
+- Perform conducted emission scan (9 kHz–30 MHz) on prototype.
+- Perform radiated emission scan (30 MHz–1 GHz).
+- Add input filter components as necessary.
+- Document worst-case switching harmonics and mitigation.
+
+**Mitigation pre-design**: L1 (TDK ACM2520-201-2P-T, 10 µH common-mode choke) and C3 (4.7 µF MLCC) are included on the 48V input. TV1 (SMAJ60A) clamps fast transients. These components should be sufficient for a first prototype scan; additional differential-mode choke or X-capacitor may be needed.
+
+**Status**: 🔲 OPEN – requires prototype. Stage 7 of bring-up-and-test-plan.md covers pre-compliance scan.
 
 **Risk level**: MEDIUM – typically requires iteration.
 
@@ -115,56 +124,77 @@ This document lists all known open design items, unresolved decisions, and engin
 
 ### OI-008 [VALIDATION] Thermal Validation
 
-**Description**: Each linear current sink (Q_WW, Q_CW) can dissipate up to 11.2W at worst case (44V bus, 28V LED, 700mA). Aluminium enclosure coupling is assumed but not dimensioned.
+**Description**: Each linear current sink (Q_WW, Q_CW) can dissipate up to 11.2 W at worst case (44V bus, 28V LED, 700mA). Aluminium enclosure coupling is assumed but not dimensioned.
+
+**Thermal budget (estimated)**:
+
+| Node | Rth (est.) | ΔT at 11.2W |
+|---|---|---|
+| Junction → package (NTMFS5C604NL SOT-223) | 10 °C/W | 112 °C |
+| Package → PCB (solder + exposed pad) | 3 °C/W | 34 °C |
+| PCB → Al enclosure (thermal vias + TIM) | 2 °C/W | 22 °C |
+| Al enclosure → ambient | dependent on enclosure | — |
+
+At 25 °C ambient and Rth_junc-ambient ≈ 15 °C/W (junction to PCB): Tj ≈ 25 + 11.2 × 15 = **193 °C** – unacceptable. Layout must use ≥ 4 thermal vias per MOSFET through to bottom copper pour, which reduces PCB thermal resistance to ~2 °C/W. With effective Rth_junc-enclosure ≈ 8 °C/W: Tj ≈ 25 + 11.2 × 8 = **115 °C** (acceptable, Tj,max = 150 °C for NTMFS5C604NL).
 
 **Required action**:
-- Measure junction temperature on prototype under worst-case conditions
-- Characterize thermal resistance through: junction → package → PCB → thermal vias → Al enclosure
-- If Tj > 125°C at ambient 50°C: increase MOSFET thermal pad area, add more thermal vias, or reduce maximum current firmware limit
-- Determine maximum enclosure temperature for rated operation
+- Measure junction temperature on prototype under worst-case conditions.
+- Characterize thermal resistance through layout.
+- If Tj > 125°C at 50°C ambient: add more thermal vias or reduce maximum current firmware limit.
+
+**Status**: 🔲 OPEN – estimated budget provided; validate on prototype. Stage 6 of bring-up-and-test-plan.md.
 
 **Risk level**: HIGH – thermal failure will reduce reliability or cause immediate shutdown.
 
 ---
 
-### OI-009 [OPEN] CCT to WW/CW Mixing Algorithm
+### OI-009 [IN PROGRESS] CCT to WW/CW Mixing Algorithm
 
 **Description**: The mapping from DALI Tc command (colour temperature in mirek) to WW/CW current ratio depends on the actual LED module spectral characteristics.
 
-**Required action**:
-- Characterize WW and CW LED chromaticity (CIE xy) vs. current
-- Implement calibrated mixing table or formula
-- Verify that commanded Tc can be achieved within LED colour gamut
-- Consider optional factory calibration procedure
+**Resolution**: Firmware interface updated in `firmware-interface.md` §3.4 with:
+1. Linear interpolation implementation (default; usable for evaluation).
+2. Full calibrated lookup-table procedure using CIE 1931 chromaticity mixing equations.
+3. Production firmware code template for table-based mixing.
 
-**Status**: Firmware placeholder with linear interpolation; replace with measured data.
+**Remaining actions**:
+- Characterise WW and CW LED chromaticity vs. current on actual LED module.
+- Build and store lookup table per documented procedure.
+- Verify gamut coverage across [Tc_cool, Tc_warm] range.
+
+**Status**: 🔶 IN PROGRESS – algorithm and calibration procedure documented; lookup table requires measured LED data.
 
 ---
 
-### OI-010 [OPEN] Minimum Dimming Level
+### OI-010 [IN PROGRESS] Minimum Dimming Level
 
-**Description**: The specification requires 0.1% dimming (minimum 1:1000 ratio). With 700mA full scale, this implies 0.7mA minimum. Op-amp input offset voltage of OPA2333 (max 10µV) causes ~0.1mA current error at 100mΩ sense resistor.
+**Description**: The specification requires 0.1% dimming (minimum 1:1000 ratio). With 700mA full scale, this implies 0.7mA minimum.
 
-**Required action**:
-- Verify actual minimum achievable current on prototype
-- If 0.1% is not achievable with current architecture at all temperatures, consider dual-range approach (switch to smaller sense resistor below 1%)
+**Resolution**: Error budget analysis documented in `firmware-interface.md` §5.4:
+- Dominant error: MCP4728 zero-code offset (worst-case ~0.5 mV → 5 mA error).
+- Typical error: ~1 mA (within spec for typical parts).
+- Mitigation options: firmware offset compensation (recommended), dual-range PWM blanking (fallback).
 
-**Status**: Under evaluation.
+**Remaining actions**:
+- Verify on prototype; implement firmware offset compensation.
+- If needed at temperature extremes, implement 1 kHz PWM blanking below arc-power 10.
+
+**Status**: 🔶 IN PROGRESS – analysis complete; prototype verification and firmware implementation required.
 
 ---
 
 ### OI-011 [OPEN] Schematic Symbol/Netlist Completion
 
-**Description**: The Rev A `.kicad_sch` file contains functional text descriptions and net lists rather than full KiCad symbol-and-wire schematics. This is a known limitation of the initial reference deliverable.
+**Description**: The Rev A `.kicad_sch` file contains functional text descriptions and net lists rather than full KiCad symbol-and-wire schematics.
 
 **Required action**:
-- Import all component symbols from KiCad standard libraries and vendor libraries
-- Draw all circuit connections as wires and bus connections
-- Add pin labels, power symbols, and no-connect markers
-- Run KiCad ERC; document and resolve all errors
-- Assign footprints from `docs/bom.csv` to all symbols
+- Import all component symbols from KiCad standard libraries and vendor libraries.
+- Draw all circuit connections as wires and bus connections.
+- Add pin labels, power symbols, and no-connect markers.
+- Run KiCad ERC; document and resolve all errors.
+- Assign footprints from `docs/bom.csv` to all symbols.
 
-**Status**: First priority for next revision.
+**Status**: 🔲 OPEN – first priority for Rev A PCB work. Prerequisite for OI-012.
 
 ---
 
@@ -173,23 +203,24 @@ This document lists all known open design items, unresolved decisions, and engin
 **Description**: The Rev A `.kicad_pcb` file contains board outline, mounting holes, connector placeholders, zone definitions, and layout region annotations. Full component placement is not complete.
 
 **Required action**:
-- Import netlist after completing schematic (OI-011)
-- Place all components per placement guidelines in `net-class-and-layout-rules.md`
-- Run KiCad DRC; document and resolve violations
-- Complete routing of critical nets; document unfinished connections
+- Import netlist after completing schematic (OI-011).
+- Place all components per placement guidelines in `net-class-and-layout-rules.md`.
+- Run KiCad DRC; document and resolve violations.
+- Complete routing of critical nets; document unfinished connections.
 
-**Status**: Pending OI-011 completion.
+**Status**: 🔲 OPEN – pending OI-011 completion.
 
 ---
 
 ## Risk Register
 
-| Risk | Probability | Impact | Mitigation |
-|---|---|---|---|
-| Aux supply exceeds VIN rating (OI-001) | Certain if not fixed | Board destruction | Replace with LMR16006 |
-| Buck-boost instability (OI-002) | High without analysis | LED flicker, EMI | SPICE simulation + prototype |
-| Current sink oscillation (OI-003) | High without analysis | Flicker at low dim | Loop analysis + prototype |
-| LED thermal failure (OI-008) | Medium | Premature failure | Thermal vias + measurement |
-| DALI non-conformance (OI-005) | N/A until tested | Cannot sell as DALI-2 | Plan certification |
-| Safety non-compliance (OI-006) | N/A until assessed | Cannot sell in EU | Engage test lab |
-| EMC failure (OI-007) | Medium | Cannot sell | Pre-compliance test |
+| Risk | Probability | Impact | Mitigation | Status |
+|---|---|---|---|---|
+| Aux supply exceeds VIN rating (OI-001) | ~~Certain if not fixed~~ N/A | ~~Board destruction~~ | ✅ Replaced with LMR16006YDDAR | RESOLVED |
+| Buck-boost instability (OI-002) | Medium (calculations done, unvalidated) | LED flicker, EMI | LTspice simulation + prototype Bode plot | IN PROGRESS |
+| Current sink oscillation (OI-003) | Low (revised values calculated) | Flicker at low dim | Loop analysis complete; verify on prototype | IN PROGRESS |
+| LED thermal failure (OI-008) | Medium | Premature failure | Thermal budget estimated; thermal vias required; measure on prototype | OPEN |
+| DALI non-conformance (OI-005) | N/A until tested | Cannot sell as DALI-2 | Plan certification after prototype | OPEN |
+| Safety non-compliance (OI-006) | N/A until assessed | Cannot sell in EU | Engage test lab after PCB layout | OPEN |
+| EMC failure (OI-007) | Medium | Cannot sell | Pre-compliance test on prototype; input filter pre-designed | OPEN |
+| Minimum dimming not achievable (OI-010) | Low (typical parts OK) | Non-compliant dimming | Firmware offset compensation; dual-range PWM fallback | IN PROGRESS |

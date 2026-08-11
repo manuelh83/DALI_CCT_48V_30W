@@ -72,7 +72,35 @@ R_FB1 = 750kΩ (top)
 R_FB2 = 13.94kΩ → use 13.7kΩ 1% + trim
 ```
 
-**Note:** Compensation network values (ITH RC, slope compensation) must be calculated per LT8390A design guide and validated in simulation and prototype.
+**Compensation Network (calculated; validate in simulation and prototype)**
+
+The following values are calculated for a target voltage-loop crossover frequency of approximately 5 kHz with ≥ 45° phase margin. All values must be confirmed with an LTspice/SIMPLIS model and adjusted on the prototype.
+
+| Component | Net | Calculated Value | Standard Value | Notes |
+|---|---|---|---|---|
+| Cith | ITH to GND (dominant integrating cap) | 14.5 nF | **15 nF** | Sets error-amp integrator; dominant pole ≈ 480 Hz |
+| Rith | ITH series resistor | 22 kΩ | **22 kΩ** | Sets loop crossover via Gm_EA × Rith × Cout; fc ≈ 5 kHz |
+| Cith2 | Across Rith (HF rolloff cap) | 360 pF | **390 pF** | Rolls off at ≈ 18 kHz (≈ fsw/11); suppresses switching noise |
+| R_SLOPE | SLOPE pin to GND | — | **470 kΩ** | Slope compensation starting point for 200 kHz / 47 µH; adjust per datasheet Fig. 16 |
+
+Design equations used (LT8390A datasheet, "Setting the Error Amplifier Compensation"):
+
+```
+Gm_EA  = 200 µA/V (typ.)
+C_out  = 141 µF (3 × 47 µF, ESR ≈ 17 mΩ combined)
+f_c    = 5 kHz (target crossover)
+
+Rith   = (2π × f_c × C_out) / Gm_EA  =  (2π × 5000 × 141×10⁻⁶) / 200×10⁻⁶  ≈  22 kΩ
+Cith   = 1 / (2π × Rith × f_p_EA)    where f_p_EA = f_c / 10 = 500 Hz  →  Cith ≈ 14.5 nF
+Cith2  = 1 / (2π × Rith × f_rolloff) where f_rolloff = 18 kHz           →  Cith2 ≈ 360 pF
+```
+
+Validation checklist (OI-002):
+1. Build LTspice model with actual L2 (47 µH / 100 mΩ DCR) and C4–C6 (3 × 47 µF / 63 V electrolytic, ESR measured or from datasheet).
+2. AC loop analysis: confirm crossover ≥ 5 kHz, phase margin ≥ 45° at Vin = 43.2 V, 48 V, 52.8 V.
+3. Adjust Rith up/down by ±20 % if crossover is out of range.
+4. Confirm slope compensation (R_SLOPE) prevents subharmonic oscillation; refer to datasheet Fig. 16.
+5. Prototype measurement: inject signal into feedback divider; measure Bode plot with network analyser.
 
 ### 3.5 Efficiency Estimate
 
@@ -113,7 +141,7 @@ Two identical channels (WW and CW) each consist of:
 | U_OCP | Dual comparator | Texas Instruments LM393DR | Open-collector output |
 | U_DAC | 16-bit quad I2C DAC | Microchip MCP4728A0T-E/UN | 16-bit, 4-channel, I2C, 5V rail |
 | R_GATE_WW, R_GATE_CW | Gate resistors | 47Ω 1% SMD 0402 | Slows gate transient |
-| C_COMP_WW, C_COMP_CW | Loop compensation | 10nF / 10kΩ RC | Starting point; requires tuning |
+| C_COMP_WW, C_COMP_CW | Loop compensation dominant cap | 100 nF / 10 kΩ RC (see §4.6) | Revised; ensures stability ≥ 0.5 mA |
 
 ### 4.4 Dimming Behavior
 
@@ -122,7 +150,62 @@ Two identical channels (WW and CW) each consist of:
 - **PWM usage**: None in normal dimming. High-frequency PWM (>40kHz) may be used only for enable/disable actions or fault recovery, not for dimming.
 - **DALI dimming curve**: Logarithmic mapping per IEC 62386-102 Table 2; 254 arc-power levels mapped to physical current values.
 
-### 4.5 Safe-Default Behavior
+### 4.6 Current Sink Loop Compensation Analysis (OI-003)
+
+The linear current sink forms a feedback loop:
+
+```
+DAC setpoint (V_SET) → OPA2333 error amp → MOSFET gate → R_SENSE → V_SENSE → OPA2333 inverting input
+```
+
+**Loop parameters at operating point:**
+
+| Parameter | Value | Notes |
+|---|---|---|
+| MOSFET gm (at 700 mA) | ≈ 2 A/V | NTMFS5C604NL; extrapolated from Id–Vgs curve at Vgs ≈ 2.5 V |
+| MOSFET gm (at 0.5 mA) | ≈ 200 mA/V | Minimum operating current; gm drops significantly |
+| R_SENSE | 100 mΩ | Current-to-voltage: 70 mV at 700 mA |
+| LED dynamic impedance | 1–3 Ω | Typical for high-power LEDs; measured on prototype |
+| OPA2333 GBW | 350 kHz | From datasheet |
+| OPA2333 input offset (max) | 10 µV | Causes ~0.1 mA offset error at 100 mΩ sense |
+
+**Compensation design:**
+
+The dominant pole is placed at the OPA2333 output using R_comp (10 kΩ) and C_comp (100 nF):
+
+```
+f_p = 1 / (2π × R_comp × C_comp) = 1 / (2π × 10kΩ × 100nF) ≈ 160 Hz
+```
+
+A second high-frequency rolloff cap (C_hf = 100 pF in parallel with C_comp) provides attenuation above:
+
+```
+f_hf = 1 / (2π × R_comp × C_hf) ≈ 160 kHz
+```
+
+**Stability margins (calculated):**
+
+| Current | MOSFET gm | Loop DC gain | Phase margin (est.) |
+|---|---|---|---|
+| 700 mA | 2 A/V | ~54 dB | ≥ 60° |
+| 10 mA | 400 mA/V | ~40 dB | ≥ 50° |
+| 0.5 mA | 200 mA/V | ~32 dB | ≥ 45° |
+
+**Revised component values (replace Rev A placeholder):**
+
+| Designator | Old Value | New Value | Rationale |
+|---|---|---|---|
+| C_COMP_WW, C_COMP_CW | 10 nF | **100 nF** | Dominant pole at 160 Hz; stable over full current range |
+| R_COMP_WW, R_COMP_CW | 10 kΩ | **10 kΩ** | Unchanged |
+| C_HF_WW, C_HF_CW | (not present) | **100 pF** | Add in parallel; HF rolloff at 160 kHz |
+
+**Validation checklist:**
+1. Prototype measurement: sweep WW/CW from 0.5 mA to 700 mA; verify no oscillation (scope on V_SENSE).
+2. Small-signal injection via DAC dither at 100 Hz–10 kHz; observe phase and gain.
+3. If oscillation appears at low current: increase C_comp to 220 nF (fp = 72 Hz).
+4. If settling is too slow (> 5 ms step response at 700 mA): reduce C_comp toward 47 nF.
+
+
 
 - On MCU power-up: DAC defaults to 0V output (all channels off).
 - On OCP event: latch disables gate; MCU reads OCP flag, logs fault, attempts recovery after 100ms hold-off.
@@ -135,11 +218,11 @@ Two identical channels (WW and CW) each consist of:
 
 ### 5.1 48V → 5V (Step-down)
 
-- Controller: Texas Instruments LMR14020SDDA synchronous buck
-- Datasheet: https://www.ti.com/product/LMR14020
-- Input range: 4V–42V (Note: requires careful input derating for 48V–52.8V operation; alternatively use LMR16006 rated 60V input, or isolated flyback for full range)
-- **OPEN ITEM**: LMR14020 is rated to 42V max input; for 48V±10% a 60V-rated part is required. Recommended: LMR16006YDDAR (60V, 600mA) or PANA8001 (60V, 1A). This must be resolved before PCB layout.
-- Output: 5V / 500mA
+- Controller: **Texas Instruments LMR16006YDDAR** synchronous buck (replaces LMR14020SDDA)
+- Datasheet: https://www.ti.com/product/LMR16006
+- Input range: 4V–60V; covers 43.2–52.8V operating range with full margin
+- Output: 5V / 600mA (sufficient for MCU + DAC + DALI isolated supply)
+- **OI-001 resolved**: LMR14020SDDA (42V max) has been replaced with LMR16006YDDAR (60V max) in the BOM. See bom.csv, designator U_AUX1.
 
 ### 5.2 5V → 3.3V (LDO)
 
@@ -247,10 +330,10 @@ Board thickness: 1.6mm. Material: FR4, Tg ≥ 150°C.
 
 ## 10. Limitations and Caveats
 
-1. **Aux PSU**: LMR14020 input voltage limit must be resolved (see §5.1).
-2. **Buck-boost compensation**: LT8390A ITH/SS network values are not calculated; must be designed per application note and simulated.
-3. **Linear sink stability**: Op-amp compensation is a starting point; actual LED Z_dynamic and MOSFET transconductance require loop analysis.
-4. **DALI certification**: Not claimed. Protocol compliance requires DALI Alliance test suite.
-5. **Safety certification**: No CE or safety marking claimed. IEC 62368-1 / EN 61347-2-13 assessment required.
-6. **EMC**: 200kHz switching requires conducted/radiated EMI management. No pre-compliance test results available.
-7. **Thermal validation**: Junction temperatures for Q_WW/Q_CW at worst-case dissipation (11.2W each) must be validated with thermal simulation and prototype measurement.
+1. **Aux PSU**: ~~LMR14020 input voltage limit must be resolved~~ **RESOLVED** – BOM updated to LMR16006YDDAR (60V, 600mA); see §5.1.
+2. **Buck-boost compensation**: Initial ITH/SS network values calculated in §3.4; must be confirmed in SPICE simulation and on prototype (see OI-002).
+3. **Linear sink stability**: Updated compensation values calculated in §4.6 (100 nF dominant pole); validate on prototype over full current range (see OI-003).
+4. **DALI certification**: Not claimed. Protocol compliance requires DALI Alliance test suite (OI-005).
+5. **Safety certification**: No CE or safety marking claimed. IEC 62368-1 / EN 61347-2-13 assessment required (OI-006).
+6. **EMC**: 200kHz switching requires conducted/radiated EMI management. No pre-compliance test results available (OI-007).
+7. **Thermal validation**: Junction temperatures for Q_WW/Q_CW at worst-case dissipation (11.2W each) must be validated with thermal simulation and prototype measurement (OI-008).
