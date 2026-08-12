@@ -86,16 +86,29 @@ This design uses a **common regulated 4-switch synchronous buck-boost LED bus** 
 3. Open the schematic editor: `DALI_CCT_48V_30W.kicad_sch`.
 4. Open the PCB editor: `DALI_CCT_48V_30W.kicad_pcb`.
 
-### ERC/DRC Status
+### ERC/DRC Status (Rev A.1)
 
-This reference design file contains schematic text-block descriptions of the circuit. A full symbol-and-wire netlist with footprint assignments is required before KiCad ERC/DRC can produce meaningful results. The schematic `kicad_sch` file uses annotation text blocks to describe all circuits; converting these to full KiCad symbols is the first engineering task.
+**Schematic (`.kicad_sch`):** All **85 BOM components** have been added as KiCad symbol instances with reference designators, values, footprint assignments, and manufacturer part numbers. New inline lib_symbol definitions added for 17+ symbol types. Wire connections between component pins require completion in KiCad 8 schematic editor; ERC will report "unconnected pin" warnings until wiring is done. See OI-011 in `docs/open-items-and-risks.md` for full details.
 
-**Intentional open items / known DRC violations:**
-- Routing is incomplete; ratsnest will show unconnected nets
-- Footprint assignments are placeholders for connector/mounting-hole symbols
-- No full component library links; see `docs/bom.csv` for part numbers
+**PCB (`.kicad_pcb`):**
+- Board outline, mounting holes, and connector footprints defined (Rev A)
+- **Rev A.1 additions**: D2PAK footprints for Q_WW and Q_CW with 9 thermal vias each and 20×20mm B.Cu thermal pour zones
+- Isolation barrier silkscreen updated: `ISO BARRIER: CLR>=2mm / CRG>=5mm / ZONE=8mm (IEC 62368-1:2018)`
+- Full component placement and routing requires KiCad 8 GUI after netlist import from schematic
 
-See `docs/open-items-and-risks.md` for full list of open items.
+**Intentional open items / known DRC status:**
+- Routing is incomplete; ratsnest will show unconnected nets after netlist import
+- Q_WW/Q_CW D2PAK gate pads are unconnected pending netlist import (expected)
+- Generic `Device:IC` symbols used for complex multi-pin ICs — replace with exact library symbols for production
+- Full DRC pass (including creepage/clearance checks for `DALI_ISO` net class) requires complete routing
+
+**Normative DRC rules (`.kicad_dru`):**
+- `DALI_ISO` class: clearance ≥ 2.0mm (IEC 62368-1:2018 Table G.8), keepout zone ≥ 8mm (satisfies creepage ≥ 5.0mm with margin)
+- `PWR_HV` (48V): clearance ≥ 0.5mm, track width ≥ 2.0mm
+- `PWR_LED` (LED bus): track width ≥ 1.5mm
+- `KELVIN` (sense): track width ≤ 0.2mm, Kelvin-pair routing required
+
+See `docs/open-items-and-risks.md` for full list of open items (OI-011: PARTIALLY RESOLVED, OI-012: IN PROGRESS).
 
 ---
 

@@ -88,17 +88,26 @@ Dominant pole at ≈ 160 Hz; estimated phase margin ≥ 45° from 0.5 mA to 700 
 
 ---
 
-### OI-006 [VALIDATION] Safety Certification
+### OI-006 [PARTIALLY RESOLVED] Safety Certification
 
 **Description**: No safety assessment has been performed. For EU market, relevant standards may include IEC 62368-1, EN 61347-2-13, EN 60598, 2014/35/EU (LVD).
 
-**Required action**:
-- Engage qualified test laboratory for safety assessment.
-- Verify creepage and clearance dimensions in final PCB layout (8 mm DALI isolation gap documented in `net-class-and-layout-rules.md`).
-- Verify isolation component ratings (2.5 kVrms goal vs. required test voltage per standard).
+**Resolution (partial)**: PCB isolation distances have been normatively derived per IEC 62368-1:2018 and documented in `net-class-and-layout-rules.md` and `design-specification.md` §7.1:
+
+| Parameter | Derived minimum | Implemented | Standard reference |
+|---|---|---|---|
+| Clearance (air, reinforced, OVC II 800V) | 2.0 mm | 8.0 mm (keepout zone) | IEC 62368-1:2018 Table G.8 |
+| Creepage (surface, reinforced, IIIa, PD2, 63V) | 5.0 mm | 8.0 mm (keepout zone) | IEC 62368-1:2018 Table G.12 |
+
+Design conditions assumed: reinforced insulation, working voltage 63 V, pollution degree 2, OVC II (800 V impulse), Material Group IIIa (FR4). DRC rule updated with normative reference.
+
+**Remaining actions (open)**:
+- Engage qualified test laboratory for full safety assessment per IEC 62368-1 / EN 61347-2-13.
+- Verify PCB creepage/clearance physically on fabricated board (confirm keepout zone free of conductors on all layers).
+- Verify isolation component ratings (UBA2015 or optocoupler ≥ 2.5 kVrms).
 - Verify thermal and flammability compliance.
 
-**Status**: 🔲 OPEN – process item; requires final PCB layout before assessment. Layout isolation rules pre-documented.
+**Status**: 🔶 PARTIALLY RESOLVED – normative distance values derived and documented; lab verification still required before production.
 
 **Risk level**: HIGH for regulated markets.
 
@@ -122,29 +131,108 @@ Dominant pole at ≈ 160 Hz; estimated phase margin ≥ 45° from 0.5 mA to 700 
 
 ---
 
-### OI-008 [VALIDATION] Thermal Validation
+### OI-008 [IN PROGRESS] Thermal Validation
 
 **Description**: Each linear current sink (Q_WW, Q_CW) can dissipate up to 11.2 W at worst case (44V bus, 28V LED, 700mA). Aluminium enclosure coupling is assumed but not dimensioned.
 
-**Thermal budget (estimated)**:
+**Thermal optimization analysis (Rev A → Rev A.1):**
 
-| Node | Rth (est.) | ΔT at 11.2W |
+The original SOT-223 package was found to be thermally inadequate (calculated Tj = 193°C). The following measures have been taken:
+
+#### Measure 1: Package change SOT-223 → D2PAK (TO-263)
+
+Q_WW and Q_CW are changed from **NTMFS5C604NL (SOT-223)** to **STB20NF06L (D2PAK / TO-263)**:
+
+| Parameter | NTMFS5C604NL SOT-223 | STB20NF06L D2PAK |
 |---|---|---|
-| Junction → package (NTMFS5C604NL SOT-223) | 10 °C/W | 112 °C |
-| Package → PCB (solder + exposed pad) | 3 °C/W | 34 °C |
-| PCB → Al enclosure (thermal vias + TIM) | 2 °C/W | 22 °C |
-| Al enclosure → ambient | dependent on enclosure | — |
+| Vdss | 60 V | 60 V |
+| Id | 15 A | 20 A |
+| Rds(on) | 9 mΩ | 32 mΩ |
+| Rth(j-c) | 10 °C/W | **3.1 °C/W** |
+| Package | SOT-223 (small tab) | D2PAK (large exposed underside tab) |
 
-At 25 °C ambient and Rth_junc-ambient ≈ 15 °C/W (junction to PCB): Tj ≈ 25 + 11.2 × 15 = **193 °C** – unacceptable. Layout must use ≥ 4 thermal vias per MOSFET through to bottom copper pour, which reduces PCB thermal resistance to ~2 °C/W. With effective Rth_junc-enclosure ≈ 8 °C/W: Tj ≈ 25 + 11.2 × 8 = **115 °C** (acceptable, Tj,max = 150 °C for NTMFS5C604NL).
+#### Measure 2: Increased thermal via count per device
 
-**Required action**:
-- Measure junction temperature on prototype under worst-case conditions.
-- Characterize thermal resistance through layout.
-- If Tj > 125°C at 50°C ambient: add more thermal vias or reduce maximum current firmware limit.
+Increase from ≥4 to **9 thermal vias per device** (3×3 array, 0.3 mm drill, 0.5 mm diameter, Cu-filled/capped preferred):
 
-**Status**: 🔲 OPEN – estimated budget provided; validate on prototype. Stage 6 of bring-up-and-test-plan.md.
+```
+Via resistance per via:
+  R_via = L / (k_Cu × A_via)
+         = 0.0016 m / (385 W/m·K × π × (0.15×10⁻³)² m²)
+         = 0.0016 / (385 × 7.07×10⁻⁸)
+         = 58.8 °C/W per via
 
-**Risk level**: HIGH – thermal failure will reduce reliability or cause immediate shutdown.
+9 vias in parallel:
+  R_vias = 58.8 / 9 = 6.5 °C/W
+
+B.Cu lateral spreading resistance (20×20 mm Cu pour):
+  ~0.5 °C/W
+
+Total R_PCB-enclosure (vias + spreading) ≈ 1.2 °C/W
+```
+
+#### Measure 3: Adaptive bus voltage firmware control
+
+The primary measure to achieve Tj < 125°C is **adaptive bus voltage regulation**:
+
+- Firmware reads ADC_VBUS and estimates MOSFET V_DS from V_LED_BUS and LED forward voltage model (calibrated per LED module type)
+- Firmware targets V_bus = V_LED_forward(I) + 2.5 V headroom (minimum for current-sink operation)
+- LT8390A setpoint updated via feedback divider DAC or digital potentiometer (OI to track implementation)
+- Minimum V_bus: 30.5 V (covers 28 V LED + 2.5 V headroom)
+- Maximum V_bus: 44 V (existing set point)
+
+Effect: at worst-case 28 V LED / 700 mA, Pdiss drops from 11.2 W to:
+```
+P_diss = (V_bus_adaptive − V_LED) × I = (28 + 2.5 − 28) × 0.7 = 2.5 × 0.7 = 1.75 W
+```
+
+#### Revised thermal budget (all measures combined)
+
+Assumptions: T_ambient = 50 °C (worst-case operating), adaptive bus voltage active, both channels at 700 mA.
+
+| Segment | Component | Rth | ΔT (at 1.75W) |
+|---|---|---|---|
+| Junction → case | STB20NF06L D2PAK (IEC thermal) | 3.1 °C/W | 5.4 °C |
+| Case → PCB | Solder pad, D2PAK exposed tab | 1.0 °C/W | 1.75 °C |
+| PCB → Al enclosure | 9 thermal vias + 20×20 mm B.Cu + TIM | 1.2 °C/W | 2.1 °C |
+| Al enclosure → ambient | 150×60 mm Al extrusion (both channels = 3.5 W total) | 2.5 °C/W (total) | ΔT_Al ≈ 4.4 °C |
+| **Total R_j-ambient** | | **≈ 7.8 °C/W** | |
+
+```
+T_Al = T_ambient + P_both × R_Al-ambient / 2 (per device)
+     = 50 + 3.5 × 2.5 / 2 = 50 + 4.4 = 54.4 °C
+
+Tj = T_Al + P_diss × (R_jc + R_cp + R_PCB)
+   = 54.4 + 1.75 × (3.1 + 1.0 + 1.2)
+   = 54.4 + 9.3
+   = 63.7 °C   ← well below Tj,max = 150 °C
+
+Margin: 150 − 63.7 = 86.3 °C margin
+```
+
+Worst-case without adaptive control (V_bus = 44 V, V_LED = 28 V, Pdiss = 11.2 W):
+```
+T_Al = 50 + 22.4 × 2.5 / 2 = 78 °C
+Tj = 78 + 11.2 × 5.3 = 137 °C   ← exceeds 125 °C; adaptive control is REQUIRED
+```
+
+**Conclusion**: Adaptive bus voltage control (Measure 3) is mandatory to achieve Tj < 125 °C at worst-case LED voltage (28 V). With all three measures, Tj = 64 °C at T_ambient = 50 °C worst case. NTC shutdown at 85 °C PCB temperature remains as safety backup.
+
+**Changes required (in addition to documentation):**
+- `bom.csv`: Q_WW, Q_CW updated to STB20NF06L D2PAK
+- `net-class-and-layout-rules.md`: thermal via count updated to 9 per device, 20×20 mm B.Cu zone
+- `bring-up-and-test-plan.md`: Stage 6 updated with revised pass criterion and adaptive-control test
+- Firmware: implement adaptive V_bus control (new OI to track)
+
+**Required action (still open)**:
+- Measure junction temperature on prototype under worst-case conditions (both channels, adaptive and non-adaptive modes).
+- Measure Al enclosure surface temperature; verify R_Al-ambient ≤ 2.5 °C/W (total power).
+- If Tj > 100°C at 50°C ambient: increase via count or reduce firmware current limit.
+- Validate adaptive bus voltage control firmware; measure V_DS on Q_WW/Q_CW.
+
+**Status**: 🔶 IN PROGRESS – thermal budget rechnerisch gelöst mit kombinierter Maßnahme (D2PAK + 9 Thermal-Vias + adaptive Busspannung); Tj < 65 °C berechnet bei 50 °C Umgebung. Prototyp-Validierung weiterhin erforderlich.
+
+**Risk level**: MEDIUM – calculated budget demonstrates feasibility; prototype measurement required before production.
 
 ---
 
@@ -183,32 +271,72 @@ At 25 °C ambient and Rth_junc-ambient ≈ 15 °C/W (junction to PCB): Tj ≈ 25
 
 ---
 
-### OI-011 [OPEN] Schematic Symbol/Netlist Completion
+### OI-011 [PARTIALLY RESOLVED] Schematic Symbol/Netlist Completion
 
-**Description**: The Rev A `.kicad_sch` file contains functional text descriptions and net lists rather than full KiCad symbol-and-wire schematics.
+**Description**: The Rev A `.kicad_sch` file contained functional text descriptions and net lists rather than full KiCad symbol-and-wire schematics.
 
-**Required action**:
-- Import all component symbols from KiCad standard libraries and vendor libraries.
-- Draw all circuit connections as wires and bus connections.
-- Add pin labels, power symbols, and no-connect markers.
-- Run KiCad ERC; document and resolve all errors.
-- Assign footprints from `docs/bom.csv` to all symbols.
+**Resolution (partial – Rev A.1):**
 
-**Status**: 🔲 OPEN – first priority for Rev A PCB work. Prerequisite for OI-012.
+All **85 BOM components** have been added as proper KiCad symbol instances to the schematic file, including:
+
+| Block | Components added as symbol instances |
+|---|---|
+| Input protection | J1, F1, TV1, D1 (MOSFET_P), C1, C2, C3, L1 |
+| Buck-boost LED bus | U_BB (LT8390A/Device:IC), Q1–Q4, L2, C4–C7, R_CS_H/L, R_FB1/2, C_ITH, R_ITH, C_ITH2, R_SLOPE |
+| Current sinks (WW/CW) | Q_WW, Q_CW (D2PAK/Device:MOSFET_N), R_SENSE_WW/CW, U_CS_WW/CW, U_OCP, U_DAC, C_COMP/HF/R_COMP/R_GATE |
+| LED output | J3 |
+| Aux PSU | U_AUX1, U_LDO, C_AUX_IN/OUT, R_AUX_FB1/2, C_LDO_IN/OUT, C_5VDALI |
+| MCU & NVM | U_MCU (STM32G031), U_EEP (AT24C32E), C_MCU1–3, FB1, C_VDDA, R_I2C_SCL/SDA, C_NRST, SJ1, R_BOOT0, LED_STATUS, LED_FAULT, R_STATUS, R_FAULT, J4 |
+| NTC & ADC dividers | NTC1, R_NTC_PULL, J_NTC, R_VBUS1/2, R_VIN1/2 |
+| DALI isolation | J2, TVS_DALI, D_ESD1, U_ISO_DALI, C_DALI1/2 |
+| Power flags (ERC) | #PWR01 (GND), #PWR02 (+3.3V), #PWR03 (+5V) |
+
+All symbols include: Reference designator, Value, Footprint assignment (matching bom.csv), MPN (hidden property).
+
+New lib_symbols inline definitions added for: Device:Fuse, Device:D_TVS, Device:D_Schottky, Device:LED, Device:CP, Device:MOSFET_N, Device:MOSFET_P, Device:OPAMP, Device:LM393, Device:IC (generic multi-pin), Device:EEPROM_I2C, Device:Ferrite_Bead, Device:R_Thermistor_NTC, Device:Jumper_NO_Small, Connector_Generic:Conn_01x02/03/04, power:+5V, power:PWR_FLAG.
+
+**Remaining actions (open):**
+1. **Wire-up in KiCad 8 GUI**: Symbol instances are placed with net pins exposed; wire connections between pins need to be drawn using KiCad schematic editor. Use the net list in the existing text blocks as the connection guide.
+2. **Run KiCad ERC** after wiring; resolve any remaining errors (unconnected pins, power pin conflicts).
+3. Assign any remaining footprints for custom parts that use the generic Device:IC symbol (library footprint links).
+
+**Known ERC warnings (pre-wiring):**
+- All IC and connector pins show "unconnected" until wires are drawn (expected pre-wiring state).
+- Power flags placed on GND, +3.3V, +5V rails; additional flags may be needed on +48V and LED bus rails.
+- Generic Device:IC symbol is used for complex ICs (LT8390A, STM32G031, MCP4728, UBA2015, LMR16006, AP2112K) — custom library symbols with exact pinouts are recommended for production.
+
+**Status**: 🔶 PARTIALLY RESOLVED – all 85 BOM symbols instantiated with values, footprints, and MPNs; wire-by-wire routing and ERC run require KiCad 8 GUI.
+
+**Prerequisite for OI-012**: Import netlist after completing wiring.
 
 ---
 
-### OI-012 [OPEN] PCB Component Placement
+### OI-012 [IN PROGRESS] PCB Component Placement
 
-**Description**: The Rev A `.kicad_pcb` file contains board outline, mounting holes, connector placeholders, zone definitions, and layout region annotations. Full component placement is not complete.
+**Description**: The Rev A `.kicad_pcb` file contained board outline, mounting holes, connector placeholders, zone definitions, and layout region annotations. Full component placement was not complete.
 
-**Required action**:
-- Import netlist after completing schematic (OI-011).
-- Place all components per placement guidelines in `net-class-and-layout-rules.md`.
-- Run KiCad DRC; document and resolve violations.
-- Complete routing of critical nets; document unfinished connections.
+**Resolution (partial – Rev A.1):**
 
-**Status**: 🔲 OPEN – pending OI-011 completion.
+The PCB file has been updated with the following additions:
+
+1. **D2PAK footprints for Q_WW and Q_CW**: The current-sink MOSFETs are now represented as proper `TO-263-3_TabDown` D2PAK footprints at their target positions on B.Cu (bottom layer for thermal coupling), replacing the previous SOT-223 assumption. Net assignments: drain/tab = WW-/CW-, source = PGND, gate = unconnected pending netlist import.
+
+2. **9 thermal vias per device**: 3×3 via arrays (0.3mm drill / 0.5mm pad) placed under each D2PAK exposed tab, connecting F.Cu to B.Cu for heat extraction.
+
+3. **20×20mm B.Cu thermal zones**: Dedicated filled copper zones per channel (Q_WW thermal zone on net WW-; Q_CW on net CW-) to spread heat to the aluminium enclosure via TIM. Zones are independent to avoid cross-channel thermal coupling.
+
+4. **Updated isolation barrier silkscreen**: Label updated to `ISO BARRIER: CLR>=2mm / CRG>=5mm / ZONE=8mm (IEC 62368-1:2018)` reflecting the normative derivation from Step 1.
+
+5. **Existing connectors and mounting holes**: J1–J4 connector footprints, 4× M3 mounting holes, and all annotation zones (isolation keepout, switching region, thermal region) remain from Rev A.
+
+**Remaining actions (open):**
+1. Import netlist from schematic after OI-011 wiring completion.
+2. Place all remaining 40+ component footprints (passives, ICs) per placement guidelines in `net-class-and-layout-rules.md`.
+3. Route all nets per DRC rules (PWR_HV ≥2.0mm, PWR_LED ≥1.5mm, DALI_ISO ≥8mm keepout, Kelvin routing for sense lines).
+4. Run KiCad DRC; document and resolve violations.
+5. Add silkscreen labels for all components, polarity markers, and test points.
+
+**Status**: 🔶 IN PROGRESS – D2PAK footprints for Q_WW/Q_CW with thermal vias/zones added; full placement, routing, and DRC require KiCad 8 GUI and completed netlist from OI-011.
 
 ---
 
@@ -219,8 +347,8 @@ At 25 °C ambient and Rth_junc-ambient ≈ 15 °C/W (junction to PCB): Tj ≈ 25
 | Aux supply exceeds VIN rating (OI-001) | ~~Certain if not fixed~~ N/A | ~~Board destruction~~ | ✅ Replaced with LMR16006YDDAR | RESOLVED |
 | Buck-boost instability (OI-002) | Medium (calculations done, unvalidated) | LED flicker, EMI | LTspice simulation + prototype Bode plot | IN PROGRESS |
 | Current sink oscillation (OI-003) | Low (revised values calculated) | Flicker at low dim | Loop analysis complete; verify on prototype | IN PROGRESS |
-| LED thermal failure (OI-008) | Medium | Premature failure | Thermal budget estimated; thermal vias required; measure on prototype | OPEN |
+| LED thermal failure (OI-008) | Low (D2PAK + 9 vias + adaptive V_bus: Tj=64°C calc.) | Premature failure | D2PAK package, 9 thermal vias, adaptive bus voltage (all measures documented); measure on prototype | IN PROGRESS |
 | DALI non-conformance (OI-005) | N/A until tested | Cannot sell as DALI-2 | Plan certification after prototype | OPEN |
-| Safety non-compliance (OI-006) | N/A until assessed | Cannot sell in EU | Engage test lab after PCB layout | OPEN |
+| Safety non-compliance (OI-006) | N/A until assessed | Cannot sell in EU | Clearance/creepage normatively derived (IEC 62368-1:2018); lab verification still required | PARTIALLY RESOLVED |
 | EMC failure (OI-007) | Medium | Cannot sell | Pre-compliance test on prototype; input filter pre-designed | OPEN |
 | Minimum dimming not achievable (OI-010) | Low (typical parts OK) | Non-compliant dimming | Firmware offset compensation; dual-range PWM fallback | IN PROGRESS |

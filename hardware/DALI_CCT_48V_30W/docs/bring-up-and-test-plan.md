@@ -167,20 +167,40 @@
 
 ## Stage 6: Thermal Validation
 
-**Equipment**: Thermocouple or thermal camera, environmental chamber (optional).
+**Equipment**: Thermocouple or thermal camera, DMM, oscilloscope, bench PSU with current meter, environmental chamber (optional, recommended for 50°C ambient test).
 
-### Step 6.1: Steady-State Thermal
-1. Run both channels at worst-case: WW = 700mA (V_LED = 28V), CW = 0mA.
-2. Measure Q_WW junction temperature (top-of-package thermocouple).
+### Step 6.1: Steady-State Thermal – Fixed Bus Voltage
+
+1. **Disable adaptive bus voltage** in firmware (set V_bus = fixed 44V for this test).
+2. Run WW channel at worst-case: I_WW = 700mA with V_LED_forward ≈ 28V (use resistive dummy load: R = 40Ω / 25W connected from LED_BUS+ to WW−).
 3. Allow 30 minutes to reach steady state.
-4. **Pass criterion**: T_package < 100°C at 25°C ambient.
-5. Repeat for CW channel.
+4. Measure Q_WW case temperature (thermocouple on D2PAK top surface).
+5. **Pass criterion (fixed bus, 25°C ambient)**: T_case < 100°C (expected ≈ 80°C from calc).
+6. **Warning criterion**: T_case > 110°C → increase thermal via count or add TIM.
+7. Repeat for CW channel.
 
-### Step 6.2: NTC Response Test
+### Step 6.2: Steady-State Thermal – Adaptive Bus Voltage
+
+1. **Enable adaptive bus voltage** firmware (V_bus = V_LED + 2.5V headroom).
+2. Repeat Step 6.1 with same conditions.
+3. Verify V_bus drops from 44V to ~30.5V when connected to 28V dummy load.
+4. **Pass criterion (adaptive bus, 25°C ambient)**: T_case < 40°C (expected ≈ 35°C from calc; Pdiss ≈ 1.75W).
+5. **Pass criterion (adaptive bus, 50°C ambient chamber)**: T_case < 60°C (Tj < 80°C).
+6. **Fail criterion**: Tj > 100°C at 50°C ambient → review thermal via placement; increase to 12+ vias.
+
+### Step 6.3: NTC Response Test
+
 1. Heat PCB with hot-air gun near NTC1.
 2. Verify firmware reads increasing temperature.
 3. Verify warning threshold at 70°C: current reduced by 20%.
 4. Verify shutdown at 85°C: both channels turn off; LED_FAULT activates.
+
+### Step 6.4: Thermal Camera Survey
+
+1. Run both channels at 700mA (adaptive bus voltage active) for 30 minutes.
+2. Take thermal camera image of B.Cu (bottom side).
+3. Verify thermal spread across 20×20mm Cu pours; hotspot should be on D2PAK tab, not on traces.
+4. Verify enclosure case temperature < 70°C at worst-case condition (50°C ambient).
 
 ---
 

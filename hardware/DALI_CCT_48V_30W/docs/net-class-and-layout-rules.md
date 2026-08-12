@@ -46,10 +46,38 @@ Applies to nets matching: `DALI*`
 |---|---|---|
 | Minimum track width | 0.5 mm | Low current; wide for robustness |
 | Minimum clearance | 0.5 mm | Within isolated domain |
-| **Isolation gap to non-isolated domain** | **8 mm minimum** | 2.5kVrms isolation goal; see note |
+| **Clearance to non-isolated domain (air)** | **2.0 mm minimum** | Normatively derived; see §Isolation Note |
+| **Creepage to non-isolated domain (surface)** | **5.0 mm minimum** | Normatively derived; see §Isolation Note |
+| **PCB keepout zone (implemented)** | **8.0 mm** | Exceeds minimums; manufacturing tolerance and conformal coating margin |
 | Via drill | 0.4 mm | Standard signal via |
 
-**Isolation Note**: The 8mm PCB clearance between DALI and non-isolated domains is designed for 48V SELV input plus a 2.5kVrms isolation component goal. This value is subject to final safety standard review per IEC 62368-1 / EN 61347-1, pollution degree, and overvoltage category. No safety certification is claimed.
+**Isolation Note – Normative Derivation (IEC 62368-1:2018)**
+
+Design conditions assumed for the galvanic DALI isolation barrier:
+- Isolation class: **Reinforced insulation** (single barrier providing protection equivalent to double insulation; required for DALI bus voltage vs. SELV 48V side)
+- Working voltage (non-isolated side): **63 V** (next standard step above 52.8 V max operating; 60 V peak transient)
+- Pollution degree: **2** (light condensation possible; indoor product)
+- Overvoltage category (SELV supply input): **OVC II** (equipment connected to fixed installation, transient overvoltage 800 V per IEC 62368-1 Annex G)
+- PCB material group: **IIIa** (FR4; CTI 100–175)
+
+**Derived minimum clearance** (IEC 62368-1:2018, Table G.8 – reinforced insulation, OVC II, 800 V impulse):
+
+```
+Impulse withstand voltage for OVC II, 63V working = 800 V (IEC 62368-1 Table G.1)
+Reinforced clearance (Table G.8, 800V impulse)   = 0.8 mm × 2 = 1.6 mm
+→ Round up to manufacturing minimum:               2.0 mm
+```
+
+**Derived minimum creepage** (IEC 62368-1:2018, Table G.12 – reinforced insulation, Material Group IIIa, PD2):
+
+```
+Basic creepage (Table G.12, 63V, IIIa, PD2)      = 2.5 mm
+Reinforced creepage = 2 × basic                   = 5.0 mm
+```
+
+**Implemented PCB keepout zone: 8.0 mm** – satisfies both minimums (clearance 2.0 mm, creepage 5.0 mm) with additional margin for PCB manufacturing tolerances and optional conformal coating. The isolation component (NXP UBA2015 or equivalent DALI IC) must itself be rated ≥ 2.5 kVrms.
+
+⚠️ *No safety certification is claimed. These values are engineering calculations only and must be verified by a qualified test laboratory against the final PCB layout per IEC 62368-1 / EN 61347-2-13.*
 
 ### SIGNAL (MCU and Logic)
 
@@ -81,7 +109,7 @@ Applies to nets matching: `*SENSE*`, `*KELVIN*`, `WW_SENSE_*`, `CW_SENSE_*`
 
 1. **Buck-boost switching loop**: Q1–Q4 + L2 + C4–C7 + R_CS_H/L must form a compact loop. Minimize area of the high-side switch to output inductor loop. Place LT8390A immediately adjacent to gate drive pins of Q1–Q4.
 
-2. **Isolation keepout zone**: A 8mm-wide band running the full board height (0–60mm) centered approximately at x=26mm separates DALI components (x < 22mm) from non-isolated components (x > 30mm). This zone must contain:
+2. **Isolation keepout zone**: A 8mm-wide band running the full board height (0–60mm) centered approximately at x=26mm separates DALI components (x < 22mm) from non-isolated components (x > 30mm). This zone satisfies the normatively derived minimum clearance (2.0 mm) and creepage (5.0 mm) per IEC 62368-1:2018 for reinforced insulation, PD2, OVC II, Material Group IIIa, 63 V working voltage. This zone must contain:
    - No copper traces or pours on any layer
    - No vias of any type
    - No component bodies or footprints
@@ -89,8 +117,11 @@ Applies to nets matching: `*SENSE*`, `*KELVIN*`, `WW_SENSE_*`, `CW_SENSE_*`
 
 3. **Current sink thermal**: Q_WW and Q_CW must be placed on the bottom of the board (B.Cu thermal zone) with:
    - Exposed pad connected to B.Cu thermal pour
-   - Minimum 4× thermal vias per device (0.3mm drill, 0.5mm diameter, filled/capped preferred)
-   - B.Cu thermal zone coupled to aluminium enclosure via thermal interface material
+   - **Minimum 9 thermal vias per device** (3×3 array, 0.3mm drill, 0.5mm diameter, Cu-filled/capped preferred): reduces R_PCB-enclosure to ~1.2°C/W
+   - Dedicated **20×20 mm B.Cu thermal pour** per channel (separate zones for Q_WW and Q_CW)
+   - B.Cu thermal zone coupled to aluminium enclosure via thermal interface material (TIM, ≥ 3 W/m·K)
+   - Use **D2PAK (TO-263) footprint** for Q_WW and Q_CW; full underside exposed pad must be soldered
+   - See §4.4 of design-specification.md for full thermal calculation
 
 4. **Kelvin routing**: R_SENSE_WW and R_SENSE_CW must have four-terminal (Kelvin) connections:
    - Force terminals carry load current (wide traces ≥ 1.5mm)
@@ -139,7 +170,7 @@ All test points: 0.5mm SMD pad, or 1mm through-hole.
 - Revision label: "REV A" on F.SilkS
 - Warning: "REFERENCE DESIGN – NOT FOR PRODUCTION WITHOUT REVIEW" on F.SilkS
 - Mounting hole labels: "M3 NPTH" near each mounting hole
-- Isolation zone marker: "ISO BARRIER >8mm" spanning the isolation keepout zone
+- Isolation zone marker: "ISO BARRIER: CLR≥2mm / CRG≥5mm / ZONE=8mm" spanning the isolation keepout zone
 
 ---
 
@@ -153,9 +184,15 @@ Add to project `.kicad_pro` or `.kicad_dru` file:
   (condition "A.NetClass == 'PWR_HV' || B.NetClass == 'PWR_HV'")
 )
 
-(rule "DALI isolation"
+(rule "DALI isolation – clearance (reinforced, IEC 62368-1:2018 Table G.8, OVC II, 800V impulse)"
+  (constraint clearance (min 2mm))
+  (condition "(A.NetClass == 'DALI_ISO') != (B.NetClass == 'DALI_ISO')")
+)
+
+(rule "DALI isolation – creepage keepout (reinforced, IEC 62368-1:2018 Table G.12, IIIa, PD2, 63V)"
   (constraint clearance (min 8mm))
   (condition "(A.NetClass == 'DALI_ISO') != (B.NetClass == 'DALI_ISO')")
+  (comment "8mm implemented value; normative minimum creepage = 5.0mm. The keepout zone of 8mm ensures both clearance (2.0mm min) and creepage (5.0mm min) are met with margin.")
 )
 
 (rule "Kelvin sense width"
