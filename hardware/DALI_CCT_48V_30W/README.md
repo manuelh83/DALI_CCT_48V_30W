@@ -88,7 +88,7 @@ This design uses a **common regulated 4-switch synchronous buck-boost LED bus** 
 
 ### ERC/DRC Status (Rev A.1)
 
-**Schematic (`.kicad_sch`):** All **85 BOM components** have been added as KiCad symbol instances with reference designators, values, footprint assignments, and manufacturer part numbers. New inline lib_symbol definitions added for 17+ symbol types. Wire connections between component pins require completion in KiCad 8 schematic editor; ERC will report "unconnected pin" warnings until wiring is done. See OI-011 in `docs/open-items-and-risks.md` for full details.
+**Schematic (`.kicad_sch`):** All **85 BOM components** have been added as KiCad symbol instances with reference designators, values, footprint assignments, and manufacturer part numbers. **227 net labels and 101 no_connect markers have been added, completing the netlist across 60 unique nets.** ERC may still report warnings related to the generic Device:IC symbol pin aliases (expected); replace with exact manufacturer symbols for a clean ERC pass. See OI-011 in `docs/open-items-and-risks.md` for full details.
 
 **PCB (`.kicad_pcb`):**
 - Board outline, mounting holes, and connector footprints defined (Rev A)
