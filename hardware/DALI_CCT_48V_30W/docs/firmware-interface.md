@@ -214,7 +214,8 @@ On DALI bus loss (no valid DALI frame received for >500ms):
 ### 5.1 Current Scale
 
 - Maximum hardware current per channel: 700 mA
-- Maximum total current (firmware limit): firmware enforces P_total ≤ 30W
+- Maximum firmware-enforced current per channel: **600 mA** (firmware constant `I_MAX = 600mA`)
+- Maximum total firmware-enforced power: firmware enforces P_total ≤ 28W
 - DAC full scale: MCP4728 = 4096 counts → 0–1.0V → 0–700mA through op-amp control loop
 
 ```
@@ -222,15 +223,18 @@ DAC_WW_code = round(I_WW_target / I_MAX * 4095)
 DAC_CW_code = round(I_CW_target / I_MAX * 4095)
 ```
 
-Where `I_MAX = 700mA` (configurable in firmware constant).
+Where `I_MAX = 600mA` (firmware constant; hardware OCP set to 900mA absolute limit).
 
 ### 5.2 Power Limiting
 
-At each control update (triggered by DALI command, ADC interrupt, or timer):
+The bus voltage is fixed at 44 V (LT8390A setpoint; not adjusted by firmware). Power limiting is enforced by capping total current:
 
 ```c
-float v_bus = adc_to_volts(ADC_VBUS);          // e.g. 44.0V
-float p_est = v_bus * (i_ww_set + i_cw_set);    // W
+// Fixed bus voltage: no ADC_VBUS monitoring for adaptive control
+const float V_BUS_FIXED = 44.0f;   // V; fixed by hardware feedback divider
+const float P_MAX_LIMIT = 28.0f;   // W; 28W leaves headroom below 30W spec
+
+float p_est = V_BUS_FIXED * (i_ww_set + i_cw_set);
 if (p_est > P_MAX_LIMIT) {
     float scale = P_MAX_LIMIT / p_est;
     i_ww_set *= scale;
@@ -238,7 +242,7 @@ if (p_est > P_MAX_LIMIT) {
 }
 ```
 
-`P_MAX_LIMIT = 29.0f` (firmware constant; 29W leaves 1W headroom below 30W spec).
+ADC_VBUS (PA2) is still read for monitoring and fault detection (over/under-voltage), but is **not** used to adjust the bus voltage setpoint. The LT8390A feedback divider fixes V_bus at 44 V.
 
 ### 5.3 Fade Implementation
 
@@ -300,12 +304,44 @@ The dominant error is the **MCP4728 zero-code offset** (~0.5 mV at DAC output = 
 |---|---|---|---|
 | OCP WW channel | PA6 high (LM393) | EN_WW = 0 immediately; log fault; set LAMP FAILURE | MCU resets after 100ms; 3 retry attempts; permanent off after 3 fails |
 | OCP CW channel | PA7 high (LM393) | EN_CW = 0 immediately; log fault | Same as WW |
-| Over-temperature warn (70°C) | ADC_NTC > threshold | Reduce I_MAX by 20%; set LED_FAULT blink pattern | Auto-clear when temp < 60°C |
+| Over-temperature warn (70°C) | ADC_NTC > threshold | Reduce I_MAX by 20% (600mA → 480mA); set LED_FAULT blink pattern | Auto-clear when temp < 60°C |
 | Over-temperature shutdown (85°C) | ADC_NTC > threshold | EN_WW = 0; EN_CW = 0; BB_SHDN = 0; LED_FAULT solid | Auto-restart when temp < 75°C |
 | Input under-voltage (<43V) | ADC_VIN < threshold | BB_SHDN = 0 (shutdown converter); channels off | Auto-enable when Vin > 44V |
 | Input over-voltage (>55V) | ADC_VIN > threshold | BB_SHDN = 0 immediately | Auto-enable when Vin < 53V |
 | I2C DAC failure | I2C NACK from MCP4728 | Switch to MCU internal DAC (PA4/PA5); log fault | Retry I2C init on next power cycle |
 | NVM read failure | I2C NACK or CRC fail | Use defaults; log fault; LED_FAULT blink | Retry on power cycle |
+
+#### NTC-based Current Limiting (Thermal Management)
+
+The NTC thermistor (NTC1, 100kΩ B3950, mounted near Q_WW/Q_CW on B.Cu thermal pour) is read via ADC_NTC (PA0) every 500 ms. Current limiting is purely **current-based** – the bus voltage (44 V fixed) is never adjusted by firmware.
+
+```c
+// Thermal current-limiting state machine (no Vbus modification)
+float pcb_temp_c = ntc_adc_to_celsius(adc_read(ADC_NTC));
+
+if (pcb_temp_c >= NTC_SHUTDOWN_TEMP) {       // 85°C
+    i_max_thermal = 0.0f;                    // total shutdown
+    set_fault(FAULT_OVERTEMP_SHUTDOWN);
+} else if (pcb_temp_c >= NTC_WARN_TEMP) {    // 70°C
+    i_max_thermal = I_MAX_NOMINAL * 0.80f;   // 600mA × 0.80 = 480mA
+    set_fault(FAULT_OVERTEMP_WARN);
+} else if (pcb_temp_c < NTC_WARN_TEMP - NTC_HYSTERESIS) {  // < 60°C
+    i_max_thermal = I_MAX_NOMINAL;           // 600mA; normal operation
+    clear_fault(FAULT_OVERTEMP_WARN);
+}
+
+// Apply thermal limit before DAC update
+float i_ww_clamped = fminf(i_ww_set, i_max_thermal);
+float i_cw_clamped = fminf(i_cw_set, i_max_thermal);
+```
+
+**Key constants:**
+- `I_MAX_NOMINAL = 600mA` – firmware maximum under normal conditions
+- `NTC_WARN_TEMP = 70°C` – triggers 20% current reduction
+- `NTC_SHUTDOWN_TEMP = 85°C` – triggers full shutdown
+- `NTC_HYSTERESIS = 10°C` – re-enable hysteresis (warn clears at 60°C, shutdown at 75°C)
+
+**Important**: This is purely current-limiting. The firmware does **not** read `ADC_VBUS` to adjust the LT8390A output voltage. The bus remains at a fixed 44 V at all times.
 
 ### 6.2 DALI Fault Reporting
 
