@@ -257,12 +257,12 @@ NTC-based current-limiting (70°C → 480mA, 85°C → shutdown) provides all ne
 
 **Resolution (partial – Rev A.1):**
 
-All **85 BOM components** have been added as proper KiCad symbol instances to the schematic file, including:
+All schematic BOM components required by the reference design have been added as proper KiCad symbol instances to the schematic file, including:
 
 | Block | Components added as symbol instances |
 |---|---|
 | Input protection | J1, F1, TV1, D1 (MOSFET_P), C1, C2, C3, L1 |
-| Buck-boost LED bus | U_BB (LT8390A/Device:IC), Q1–Q4, L2, C4–C7, R_CS_H/L, R_FB1/2, C_ITH, R_ITH, C_ITH2, R_SLOPE |
+| Buck-boost LED bus | U_BB (`AnalogDevices:LT8390AIFE`), Q1–Q4, L2, C4–C7, C_INTVCC, C_BOOT, R_CS_H/L, R_FB1/2, C_ITH, R_ITH, C_ITH2, R_SLOPE, R_RT, R_BB_SHDN_PU |
 | Current sinks (WW/CW) | Q_WW, Q_CW (D2PAK/Device:MOSFET_N), R_SENSE_WW/CW, U_CS_WW/CW, U_OCP, U_DAC, C_COMP/HF/R_COMP/R_GATE |
 | LED output | J3 |
 | Aux PSU | U_AUX1, U_LDO, C_AUX_IN/OUT, R_AUX_FB1/2, C_LDO_IN/OUT, C_5VDALI |
@@ -273,16 +273,16 @@ All **85 BOM components** have been added as proper KiCad symbol instances to th
 
 All symbols include: Reference designator, Value, Footprint assignment (matching bom.csv), MPN (hidden property).
 
-New lib_symbols inline definitions added for: Device:Fuse, Device:D_TVS, Device:D_Schottky, Device:LED, Device:CP, Device:MOSFET_N, Device:MOSFET_P, Device:OPAMP, Device:LM393, Device:IC (generic multi-pin), Device:EEPROM_I2C, Device:Ferrite_Bead, Device:R_Thermistor_NTC, Device:Jumper_NO_Small, Connector_Generic:Conn_01x02/03/04, power:+5V, power:PWR_FLAG.
+New lib_symbols inline definitions added for: Device:Fuse, Device:D_TVS, Device:D_Schottky, Device:LED, Device:CP, Device:MOSFET_N, Device:MOSFET_P, Device:OPAMP, Device:LM393, Device:IC (generic multi-pin), `AnalogDevices:LT8390AIFE`, Device:EEPROM_I2C, Device:Ferrite_Bead, Device:R_Thermistor_NTC, Device:Jumper_NO_Small, Connector_Generic:Conn_01x02/03/04, power:+5V, power:PWR_FLAG.
 
 **Resolution (Rev A.2 – Wiring complete):**
 
-All **85 BOM component pins** have been connected using KiCad net labels. 227 net labels and 101 no_connect markers were programmatically added to `DALI_CCT_48V_30W.kicad_sch`. The complete netlist covers 60 unique named nets:
+All schematic component pins have been connected using KiCad net labels. The complete netlist covers the required named nets for input power, the LED bus, current sinks, MCU control, and DALI isolation:
 
 | Net class | Key nets |
 |---|---|
-| Input / power | `+48V_IN`, `VIN_F`, `VIN`, `GND`, `+5V`, `+3.3V`, `+5V_DALI`, `DALI_GND` |
-| LED bus | `LED_BUS`, `SW1`, `SW2`, `Q1_GATE`–`Q4_GATE`, `BB_FB`, `ITH`, `ITH_HF`, `SLOPE`, `CS_H`, `CS_L` |
+| Input / power | `+48V_IN`, `VIN_F`, `48V_FILT+`, `PGND`, `5V_AUX`, `+3.3V`, `+5V_DALI`, `DALI_GND` |
+| LED bus | `LED_BUS`, `SW`, `LX`, `Q1_GATE`–`Q4_GATE`, `BB_FB`, `COMP`, `COMP_HF`, `SLOPE`, `CS_H`, `CS_L`, `RT`, `BB_SHDN` |
 | Current sinks | `WW-`, `CW-`, `V_SENSE_WW`, `V_SENSE_CW`, `V_SET_WW`, `V_SET_CW`, `GATE_WW`, `GATE_CW`, `COMP_WW`, `COMP_CW` |
 | OCP / DAC | `OCP_WW`, `OCP_CW`, `OCP_REF`, `EN_WW`, `EN_CW`, `DAC_OUT_C`, `DAC_OUT_D` |
 | MCU / debug | `I2C_SCL`, `I2C_SDA`, `NRST`, `SWDIO`, `SWDCLK`, `BB_SHDN`, `VDDA`, `BOOT0_J` |
@@ -290,13 +290,19 @@ All **85 BOM component pins** have been connected using KiCad net labels. 227 ne
 | ADC / monitoring | `ADC_NTC`, `ADC_VIN`, `ADC_VBUS`, `AUX_FB`, `AUX_SW` |
 | Indicators | `LED_STATUS`, `LED_FAULT`, `STATUS_A`, `FAULT_A`, `NTC_P` |
 
-**Remaining actions (for production refinement):**
-1. **Open in KiCad 8 GUI and run ERC**: Verify no unexpected unconnected pins remain; resolve any ERC warnings from the generic Device:IC symbol pin aliases.
-2. **Replace generic Device:IC with exact library symbols**: The LT8390A, STM32G031, MCP4728, UBA2015, LMR16006, AP2112K are all represented by the multi-purpose Device:IC symbol. Replacing with exact manufacturer symbols will expose real pin names and catch any pin assignment errors.
-3. **Verify Q3/Q4 gate nets**: The generic Device:IC symbol for U_BB maps LT8390A gate drive outputs to SW1/SW2 pin positions. Q3_GATE and Q4_GATE nets need explicit connections once the real LT8390A symbol is used.
-4. **Power flags**: Add `PWR_FLAG` symbols on `+48V_IN` and `LED_BUS` rails to suppress remaining ERC warnings.
+**Resolution (Rev A.3 – LT8390A exact symbol):**
 
-**Status**: ✅ RESOLVED – all 85 component pins connected via net labels; netlist is complete in `DALI_CCT_48V_30W.kicad_sch`. ERC refinement with exact IC symbols is recommended before PCB layout.
+- Added a project-local KiCad 8 symbol library (`AnalogDevices.kicad_sym`) and `sym-lib-table` entry.
+- Replaced U_BB with the exact `AnalogDevices:LT8390AIFE` 28-pin TSSOP symbol.
+- Exposed all LT8390A pins in the schematic, including explicit `Q3_GATE` / `Q4_GATE`, `RT`, duplicate `VIN`, duplicate `INTVCC`, and four `PGND` pins.
+- Added the missing local support parts required by the pinout update: `R_RT`, `R_BB_SHDN_PU`, `C_INTVCC`, and `C_BOOT`.
+
+**Remaining actions (production / GUI validation):**
+1. Open in KiCad 8 GUI and run ERC to confirm there are no remaining power-pin or no-connect warnings.
+2. Re-import the updated schematic netlist into PCB editor before any final routing work.
+3. Continue replacing other generic `Device:IC` symbols (`U_MCU`, `U_DAC`, `U_ISO_DALI`, `U_AUX1`, `U_LDO`) as separate cleanup tasks.
+
+**Status**: ✅ RESOLVED – U_BB now uses the exact LT8390AIFE symbol and the buck-boost support nets are explicitly wired in `DALI_CCT_48V_30W.kicad_sch`.
 
 **Prerequisite for OI-012**: ✅ Netlist complete; import into PCB after ERC pass.
 
