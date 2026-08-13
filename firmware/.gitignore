@@ -1,4 +1,4 @@
-build/
+build*/
 out/
 coverage/
 *.elf
