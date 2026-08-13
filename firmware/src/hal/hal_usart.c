@@ -1,5 +1,7 @@
 #include "hal_usart.h"
 
+#include <stddef.h>
+
 #define USART_BUFFER_SIZE 32U
 
 static uint8_t g_rx[USART_BUFFER_SIZE];
@@ -23,7 +25,7 @@ void HalUsart_PushRx(uint8_t value)
 
 bool HalUsart_PopRx(uint8_t *value)
 {
-    if ((value == 0) || (g_rx_tail == g_rx_head)) {
+    if ((value == NULL) || (g_rx_tail == g_rx_head)) {
         return false;
     }
     *value = g_rx[g_rx_tail];

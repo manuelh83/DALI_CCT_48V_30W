@@ -36,6 +36,11 @@ static void set_response(DaliState *state, uint8_t response)
     DaliLink_SetResponse(state, response);
 }
 
+static uint8_t encode_tc_query_response(uint16_t tc_mirek)
+{
+    return (tc_mirek > 0xFFU) ? 0xFFU : (uint8_t)tc_mirek;
+}
+
 void DaliState_Init(DaliState *state)
 {
     memset(state, 0, sizeof(*state));
@@ -127,13 +132,13 @@ static void handle_query(const DaliState *state, DaliState *mutable_state, uint8
             set_response(mutable_state, state->persistent.short_address == FW_DALI_UNASSIGNED_ADDRESS ? 0xFFU : (uint8_t)(state->persistent.short_address << 1U));
             break;
         case DALI_CMD_QUERY_TC:
-            set_response(mutable_state, (uint8_t)(state->target_tc_mirek & 0xFFU));
+            set_response(mutable_state, encode_tc_query_response(state->target_tc_mirek));
             break;
         case DALI_CMD_QUERY_TC_COOL:
-            set_response(mutable_state, (uint8_t)(state->persistent.tc_cool_mirek & 0xFFU));
+            set_response(mutable_state, encode_tc_query_response(state->persistent.tc_cool_mirek));
             break;
         case DALI_CMD_QUERY_TC_WARM:
-            set_response(mutable_state, (uint8_t)(state->persistent.tc_warm_mirek & 0xFFU));
+            set_response(mutable_state, encode_tc_query_response(state->persistent.tc_warm_mirek));
             break;
         default:
             if ((command >= DALI_CMD_QUERY_SCENE_LEVEL_0) && (command < (DALI_CMD_QUERY_SCENE_LEVEL_0 + FW_DALI_MAX_SCENES))) {

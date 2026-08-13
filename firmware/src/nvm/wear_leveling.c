@@ -29,15 +29,12 @@ bool WearLeveling_Load(DaliDynamicState *dynamic_state)
 
 bool WearLeveling_Store(const DaliDynamicState *dynamic_state)
 {
-    DaliDynamicState current = {0};
     uint8_t next_slot = 0U;
     for (uint8_t slot = 0U; slot < NVM_DYNAMIC_SLOT_COUNT; ++slot) {
         DaliDynamicState temp = {0};
         if (EepromDriver_Read(slot_address(slot), (uint8_t *)&temp, sizeof(temp)) && (temp.valid_marker == 0xA5U)) {
-            current = temp;
             next_slot = (uint8_t)((slot + 1U) % NVM_DYNAMIC_SLOT_COUNT);
         }
     }
-    (void)current;
     return EepromDriver_Write(slot_address(next_slot), (const uint8_t *)dynamic_state, sizeof(*dynamic_state));
 }

@@ -35,6 +35,10 @@ int main(void)
     DaliApplication_Process(&state, command_frame(23U, DALI_CMD_SET_TC), 30U);
     TEST_ASSERT_EQUAL_UINT(300U, state.target_tc_mirek);
 
+    DaliApplication_Process(&state, command_frame(23U, DALI_CMD_QUERY_TC), 35U);
+    TEST_ASSERT_TRUE(DaliLink_GetResponse(&state, &response));
+    TEST_ASSERT_EQUAL_HEX8(0xFFU, response);
+
     DaliApplication_Process(&state, command_frame(23U, DALI_CMD_QUERY_STATUS), 40U);
     TEST_ASSERT_TRUE(DaliLink_GetResponse(&state, &response));
     TEST_ASSERT_EQUAL_HEX8(state.status_bits, response);
