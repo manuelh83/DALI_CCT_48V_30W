@@ -72,8 +72,8 @@ Exact symbol pinout used in the schematic:
 | 16 | GATE4 | `Q1_GATE` (buck high-side) |
 | 17 | SW | Buck/boost switching node `SW` |
 | 19 | LX | Inductor-side switching node `LX` |
-| 20 | GATE_H | Routed with the buck high-side gate network |
-| 21 | VCC | `5V_AUX`, with bootstrap capacitor `C_BOOT` to `SW` |
+| 20 | GATE_H | Bootstrap / high-side gate node with `C_BOOT` to `SW` |
+| 21 | VCC | `5V_AUX` gate-drive supply input |
 | 22, 24 | VOUT / VOUT_SENSE | `LED_BUS` regulated 44V LED rail |
 | 25 | FREQ | Left open for optional soft-start network |
 
