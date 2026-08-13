@@ -44,11 +44,38 @@ A 4-switch synchronous buck-boost topology allows input voltage (43.2–52.8 V) 
 
 - Manufacturer: Analog Devices (formerly Linear Technology)
 - Datasheet: https://www.analog.com/media/en/technical-documentation/data-sheets/lt8390a.pdf
+- KiCad 8 symbol: `AnalogDevices:LT8390AIFE`
+- Package / footprint: `Package_SO:TSSOP-28_4.4x9.7mm_P0.65mm`
 - Input range: 4V to 60V
 - Output range: 1V to 60V
 - Switching frequency: configurable 100kHz–1MHz; **target: 200kHz** (set by RT resistor)
 - Current sense: high-side and low-side sensed; average current mode control
-- Enable/shutdown: active-high SHDN pin, driven by MCU or tied high
+- Enable/shutdown: **active-low SHDN** input; MCU `PB8` drives `BB_SHDN` and a 100kΩ pull-up to `5V_AUX` keeps the converter enabled by default
+
+Exact symbol pinout used in the schematic:
+
+| Pin | Name | Net / function |
+|---|---|---|
+| 1, 28 | VIN | `48V_FILT+` buck-boost input |
+| 2, 26 | INTVCC | `5V_AUX`; pin 26 also feeds the local 10µF bypass network |
+| 3 | SHDN | `BB_SHDN` from MCU |
+| 4 | RT | `R_RT = 470kΩ` to `PGND` (~200kHz target) |
+| 5, 10 | ITH / COMP | Shared compensation node (`COMP`) |
+| 6 | SLOPE | `R_SLOPE = 470kΩ` to `PGND` |
+| 7, 8 | CS+ / CS- | `CS_H` / `CS_L` current-sense inputs |
+| 9 | FB | `BB_FB` from the output divider |
+| 11 | N.C. | Left open intentionally |
+| 12, 18, 23, 27 | GND | `PGND` |
+| 13 | GATE1 | `Q2_GATE` (buck low-side) |
+| 14 | GATE2 | `Q4_GATE` (boost low-side) |
+| 15 | GATE3 | `Q3_GATE` (boost high-side) |
+| 16 | GATE4 | `Q1_GATE` (buck high-side) |
+| 17 | SW | Buck/boost switching node `SW` |
+| 19 | LX | Inductor-side switching node `LX` |
+| 20 | GATE_H | Routed with the buck high-side gate network |
+| 21 | VCC | `5V_AUX`, with bootstrap capacitor `C_BOOT` to `SW` |
+| 22, 24 | VOUT / VOUT_SENSE | `LED_BUS` regulated 44V LED rail |
+| 25 | FREQ | Left open for optional soft-start network |
 
 ### 3.3 Power Components
 
@@ -59,8 +86,12 @@ A 4-switch synchronous buck-boost topology allows input voltage (43.2–52.8 V) 
 | L2 | Main inductor | Bourns SRR1260-470M | 47µH, 3A, 100mΩ DCR |
 | C4, C5, C6 | Output bulk caps | Panasonic EEU-FR1J470 | 47µF/63V electrolytic |
 | C7 | Output HF bypass | GRM31CR61E475KA88L | 4.7µF/63V MLCC |
+| C_INTVCC | LT8390A local bypass | GRM21BR71A106KE51L | 10µF/10V X7R |
+| C_BOOT | Bootstrap capacitor | GRM155R71A104KE14D | 100nF/10V X7R |
 | R_CS_H | High-side current sense | Vishay WSBS2515R0100FEA | 10mΩ/1W/1% |
 | R_CS_L | Low-side current sense | Vishay WSBS2515R0100FEA | 10mΩ/1W/1% |
+| R_RT | Timing resistor | Yageo RC0402FR-07470KL | 470kΩ/1% |
+| R_BB_SHDN_PU | SHDN pull-up | Yageo RC0402FR-07100KL | 100kΩ/1% |
 
 ### 3.4 Output Voltage Setting
 
@@ -82,6 +113,8 @@ The following values are calculated for a target voltage-loop crossover frequenc
 | Rith | ITH series resistor | 22 kΩ | **22 kΩ** | Sets loop crossover via Gm_EA × Rith × Cout; fc ≈ 5 kHz |
 | Cith2 | Across Rith (HF rolloff cap) | 360 pF | **390 pF** | Rolls off at ≈ 18 kHz (≈ fsw/11); suppresses switching noise |
 | R_SLOPE | SLOPE pin to GND | — | **470 kΩ** | Slope compensation starting point for 200 kHz / 47 µH; adjust per datasheet Fig. 16 |
+
+Implementation note: in the KiCad schematic, pins **5 (ITH)** and **10 (COMP)** are tied to the same `COMP` net so the full `C_ITH` / `R_ITH` / `C_ITH2` network remains visible as one controllable node.
 
 Design equations used (LT8390A datasheet, "Setting the Error Amplifier Compensation"):
 

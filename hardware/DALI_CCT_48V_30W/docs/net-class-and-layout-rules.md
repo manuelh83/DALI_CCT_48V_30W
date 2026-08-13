@@ -142,6 +142,8 @@ Applies to nets matching: `*SENSE*`, `*KELVIN*`, `WW_SENSE_*`, `CW_SENSE_*`
 - I2C traces: keep < 30mm total; 4.7kΩ pull-ups to 3.3V_MCU
 - DALI_TX/DALI_RX: keep in isolated domain; route away from buck-boost switching nodes
 - Gate drive traces (Q1–Q4): keep < 10mm from LT8390A gate outputs; 47Ω gate resistors placed close to MOSFET gates
+- `SLOPE`, `COMP`, and `BB_FB`: treat as sensitive analog nets; keep short and away from `SW` / `LX`
+- `SW`, `LX`, and `LED_BUS`: route as power nets with at least the `PWR_LED` width rules (≥ 1.5mm)
 
 ### Test Point Placement
 

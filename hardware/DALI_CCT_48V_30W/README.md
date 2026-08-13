@@ -88,7 +88,7 @@ This design uses a **common regulated 4-switch synchronous buck-boost LED bus** 
 
 ### ERC/DRC Status (Rev A.1)
 
-**Schematic (`.kicad_sch`):** All **85 BOM components** have been added as KiCad symbol instances with reference designators, values, footprint assignments, and manufacturer part numbers. **227 net labels and 101 no_connect markers have been added, completing the netlist across 60 unique nets.** ERC may still report warnings related to the generic Device:IC symbol pin aliases (expected); replace with exact manufacturer symbols for a clean ERC pass. See OI-011 in `docs/open-items-and-risks.md` for full details.
+**Schematic (`.kicad_sch`):** All KiCad symbol instances required for the current reference design are present, and U_BB now uses the exact project-local `AnalogDevices:LT8390AIFE` 28-pin symbol instead of the generic `Device:IC`. The schematic netlist is still intended to be verified with KiCad 8 ERC after opening the project locally. See OI-011 in `docs/open-items-and-risks.md` for full details.
 
 **PCB (`.kicad_pcb`):**
 - Board outline, mounting holes, and connector footprints defined (Rev A)
@@ -99,7 +99,7 @@ This design uses a **common regulated 4-switch synchronous buck-boost LED bus** 
 **Intentional open items / known DRC status:**
 - Routing is incomplete; ratsnest will show unconnected nets after netlist import
 - Q_WW/Q_CW D2PAK gate pads are unconnected pending netlist import (expected)
-- Generic `Device:IC` symbols used for complex multi-pin ICs — replace with exact library symbols for production
+- Other complex ICs still use generic `Device:IC` symbols — replace them with exact library symbols in follow-up cleanup work
 - Full DRC pass (including creepage/clearance checks for `DALI_ISO` net class) requires complete routing
 
 **Normative DRC rules (`.kicad_dru`):**
@@ -108,7 +108,7 @@ This design uses a **common regulated 4-switch synchronous buck-boost LED bus** 
 - `PWR_LED` (LED bus): track width ≥ 1.5mm
 - `KELVIN` (sense): track width ≤ 0.2mm, Kelvin-pair routing required
 
-See `docs/open-items-and-risks.md` for full list of open items (OI-011: PARTIALLY RESOLVED, OI-012: IN PROGRESS).
+See `docs/open-items-and-risks.md` for full list of open items (OI-011: RESOLVED, OI-012: IN PROGRESS).
 
 ---
 

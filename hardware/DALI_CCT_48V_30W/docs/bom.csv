@@ -6,7 +6,11 @@ C1,1,100uF/63V electrolytic radial,Panasonic EEU-FR1J101,5mm dia / 11mm H radial
 C2,1,100uF/63V electrolytic radial,Panasonic EEU-FR1J101,5mm dia / 11mm H radial,63V,—,Nichicon UHE1J101MPD
 C3,1,4.7uF/63V MLCC X7R,Murata GRM31CR61E475KA88L,1206 (3216M),63V,—,TDK C3216X7R1E475K160AB
 L1,1,Common-mode choke 10uH 2A,TDK ACM2520-201-2P-T,SMD 2520,—,2A per line,Wurth 742792510 (alternate size)
-U_BB,1,4-switch sync buck-boost controller,Analog Devices LT8390AIFE,TSSOP-28,60V,—,LT8392 (alternate; lower freq range)
+U_BB,1,4-switch sync buck-boost controller,Analog Devices LT8390AIFE,Package_SO:TSSOP-28_4.4x9.7mm_P0.65mm,60V,—,LT8392 (alternate; lower freq range)
+R_RT,1,Timing resistor 470k 1%,Yageo RC0402FR-07470KL,Resistor_SMD:R_0402_1005Metric,50V,—,Vishay CRCW0402470KFKED
+R_BB_SHDN_PU,1,LT8390A SHDN pull-up 100k 1%,Yageo RC0402FR-07100KL,Resistor_SMD:R_0402_1005Metric,50V,—,Vishay CRCW0402100KFKED
+C_INTVCC,1,LT8390A INTVCC bypass 10uF/10V X7R,Murata GRM21BR71A106KE51L,Capacitor_SMD:C_0805_2012Metric,10V,—,TDK C2012X7R1A106K125AB
+C_BOOT,1,LT8390A bootstrap capacitor 100nF/10V X7R,Murata GRM155R71A104KE14D,Capacitor_SMD:C_0402_1005Metric,10V,—,TDK C1005X7R1A104K050BB
 Q1,1,N-ch MOSFET 30V 25A (buck high-side),Alpha & Omega AON7534,DFN-3x3,30V,25A,Si7336ADP (30V 30A); Infineon BSZ066N03
 Q2,1,N-ch MOSFET 30V 25A (buck low-side),Alpha & Omega AON7534,DFN-3x3,30V,25A,Si7336ADP
 Q3,1,N-ch MOSFET 40V 20A (boost high-side),Alpha & Omega AON6424,DFN-3x3,40V,20A,Si7464DP (40V 22A)

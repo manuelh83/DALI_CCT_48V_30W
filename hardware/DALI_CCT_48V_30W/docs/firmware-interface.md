@@ -36,7 +36,7 @@ The firmware runs on a STM32G031K8T6 (ARM Cortex-M0+, 64MHz, 64KB flash, 8KB SRA
 | PB4 | GPIO out | LED_FAULT | Red fault LED | Active-high; 1kΩ series |
 | PB6 | I2C1_SCL | I2C_SCL | I2C bus clock | 400kHz; 4.7kΩ pull-up to 3.3V |
 | PB7 | I2C1_SDA | I2C_SDA | I2C bus data | 400kHz; 4.7kΩ pull-up to 3.3V |
-| PB8 | GPIO out | BB_SHDN | Buck-boost enable/shutdown | Active-low shutdown; high = running |
+| PB8 | GPIO out | BB_SHDN | Buck-boost enable/shutdown | Active-low shutdown; 100kΩ pull-up to 5V_AUX keeps converter enabled when MCU is high-Z |
 | NRST | Reset | NRST | Hardware reset | 100nF to GND; external reset pin |
 
 ### I2C Device Addresses
@@ -45,6 +45,10 @@ The firmware runs on a STM32G031K8T6 (ARM Cortex-M0+, 64MHz, 64KB flash, 8KB SRA
 |---|---|---|
 | MCP4728 | 0x60 | 12-bit quad DAC for WW/CW setpoints |
 | AT24C32E | 0x50 | EEPROM for DALI NVM |
+
+**LT8390A hardware-set analog pins**
+
+`RT`, `SLOPE`, `ITH/COMP`, `CS+`, `CS-`, and `FB` are not firmware-controlled. Their values are fixed in hardware by `R_RT`, `R_SLOPE`, `C_ITH`, `R_ITH`, `C_ITH2`, `R_FB1`, and `R_FB2`. Firmware only asserts `BB_SHDN`, monitors `ADC_VIN` / `ADC_VBUS`, and reacts to resulting faults.
 
 ---
 
