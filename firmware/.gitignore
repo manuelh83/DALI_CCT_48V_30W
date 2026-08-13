@@ -1,10 +1,42 @@
-build*/
-out/
-coverage/
+# Build artifacts
+build/
+build-embedded/
+build-test/
 *.elf
 *.hex
+*.bin
 *.map
-*.o
-*.obj
 *.a
+*.o
 *.d
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# STM32CubeIDE
+.settings/
+.cproject
+.project
+RemoteSystemsTempFiles/
+Debug/
+Release/
+
+# Test coverage
+*.gcda
+*.gcno
+coverage/
+
+# Temporary
+*.tmp
+*.bak
