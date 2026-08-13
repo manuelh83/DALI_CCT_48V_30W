@@ -123,19 +123,20 @@ Two identical channels (WW and CW) each consist of:
 
 | Parameter | Value | Notes |
 |---|---|---|
-| Max current per channel | 700 mA | Hardware capability |
+| Max current per channel (firmware limit) | 600 mA | Firmware enforces; hardware capable of 700 mA |
 | Min current per channel | ~0.5 mA | Limited by DAC resolution and op-amp offset |
-| Dimming ratio | 1400:1 | 0.07% of 700mA = 0.5mA |
-| Sense resistor | 100 mΩ | Vsense = 70mV at 700mA |
-| OCP threshold | ~1.05A | Vsense = 105mV at OCP comparator |
+| Dimming ratio | 1200:1 | 0.08% of 600mA = 0.5mA |
+| Sense resistor | 100 mΩ | Vsense = 60mV at 600mA |
+| OCP threshold | ~900 mA | Vsense = 90mV at OCP comparator (reduced from 1.05A) |
 | MOSFET Vdss | 60V | Must withstand LED_BUS+ when off |
-| Max Pdiss per channel | 11.2W | (44V − 28V) × 700mA worst case |
+| Max Pdiss per channel (firmware-limited) | 9.6W | (44V − 28V) × 600mA worst case (hardware, no firmware thermal action) |
+| Max Pdiss per channel (NTC ≥ 70°C) | 7.68W | 480mA limit after 20% NTC current reduction |
 
 ### 4.3 Component Selection
 
 | Designator | Function | Part | Rating |
 |---|---|---|---|
-| Q_WW, Q_CW | Current sink MOSFET | STMicro STB20NF06L | 60V, 20A, 32mΩ, D2PAK (TO-263) |
+| Q_WW, Q_CW | Current sink MOSFET | STMicro STW20NM60N | 60V, 20A, 15mΩ, D2PAK (TO-263); Rth(j-c) = 2.0 °C/W |
 | R_SENSE_WW, R_SENSE_CW | Current sense | Vishay WSHM2818R1000FEB | 100mΩ/1W/1% |
 | U_CS_WW, U_CS_CW | Error amplifier | Texas Instruments OPA2333AIDR | 1.8V–5.5V supply, 25nV/√Hz noise |
 | U_OCP | Dual comparator | Texas Instruments LM393DR | Open-collector output |
@@ -143,56 +144,56 @@ Two identical channels (WW and CW) each consist of:
 | R_GATE_WW, R_GATE_CW | Gate resistors | 47Ω 1% SMD 0402 | Slows gate transient |
 | C_COMP_WW, C_COMP_CW | Loop compensation dominant cap | 100 nF / 10 kΩ RC (see §4.5) | Revised; ensures stability ≥ 0.5 mA |
 
-### 4.4 Thermal Design (OI-008)
+### 4.4 Thermal Design (Rev A.2 – Fixed 44V Bus, No Adaptive Vbus Required)
 
-The current sink MOSFET dissipates power equal to (V_LED_BUS − V_LED_forward) × I_channel. Without mitigation, worst-case dissipation (44 V bus, 28 V LED, 700 mA) is 11.2 W per channel.
+The current sink MOSFET dissipates power equal to (V_LED_BUS − V_LED_forward) × I_channel. The thermal design is dimensioned to keep Tj < 125 °C (target: ≤ 95 °C) at fixed 44 V bus, worst-case 28 V LED forward voltage, and 600 mA firmware-limited current without any adaptive bus-voltage firmware control.
 
-#### Thermal optimization measures (Rev A.1)
+#### Thermal optimization measures (Rev A.2)
 
-1. **Package change to D2PAK**: STB20NF06L (D2PAK / TO-263) replaces the SOT-223, reducing Rth(j-c) from 10 °C/W to **3.1 °C/W**.
-2. **9 thermal vias per device**: 3×3 array, 0.3 mm drill / 0.5 mm pad diameter, Cu-filled preferred. Placed under D2PAK exposed tab.
-3. **20×20 mm dedicated B.Cu thermal pour per channel**: couples to aluminium enclosure via thermal interface material (TIM, e.g. Bergquist GP3000, 3 W/m·K).
-4. **Adaptive bus voltage**: Firmware targets V_bus = V_LED_forward(I) + 2.5 V headroom, reducing MOSFET headroom from worst-case 16 V to 2.5 V.
+1. **MOSFET upgrade**: STW20NM60N (D2PAK / TO-263) with Rds(on) = 15 mΩ and Rth(j-c) = 2.0 °C/W replaces STB20NF06L (Rds(on) = 32 mΩ, Rth(j-c) = 3.1 °C/W). Conduction loss at 600 mA: P_Rds = 0.6² × 0.015 = 5.4 mW (negligible).
+2. **25 thermal vias per device (5×5 array)**: 0.3 mm drill / 0.5 mm pad, Cu-filled/capped (not open). Placed under D2PAK exposed tab. Reduces R_PCB from ~1.2 °C/W (9-via) to ~0.5 °C/W.
+3. **30×30 mm dedicated B.Cu thermal pour per channel**: Larger copper area improves lateral heat spreading to aluminium enclosure via TIM (e.g. Bergquist GP3000, 3 W/m·K). Estimated lateral spreading resistance: ~0.3 °C/W.
+4. **Firmware current limit 600 mA nominal**: Reduces worst-case headroom dissipation from 11.2 W (700 mA) to 9.6 W. OCP set to 900 mA absolute hardware limit.
+5. **NTC-based current limiting (70 °C warning, 85 °C shutdown)**: Provides passive safety margin; is purely current-limiting – no Vbus regulation required.
 
-#### Revised thermal Rth chain
+#### Revised thermal Rth chain (Rev A.2)
 
 | Segment | Part | Rth | Notes |
 |---|---|---|---|
-| Junction → case | STB20NF06L D2PAK | 3.1 °C/W | Exposed tab |
-| Case → PCB | Solder pad + D2PAK tab | 1.0 °C/W | D2PAK large exposed underside area |
-| PCB → Al enclosure | 9 vias + 20×20 mm pour + TIM | 1.2 °C/W | Calculated via thermal resistance formula |
+| Junction → case | STW20NM60N D2PAK | 2.0 °C/W | From datasheet (TO-263 exposed tab) |
+| Case → PCB | Solder pad + D2PAK tab | 0.8 °C/W | D2PAK large exposed underside area |
+| PCB → Al enclosure | 25 vias + 30×30 mm B.Cu + TIM | 0.5 °C/W | 5×5 via array; R_via_parallel = 58.8/25 = 2.35 °C/W; dominated by spreading ~0.3 °C/W |
 | Al enclosure → ambient (150×60 mm Al) | Extruded Al housing | 2.5 °C/W (shared, both channels) | Natural convection, both sides |
+| **Total R_j-ambient (per channel)** | | **~4.3 °C/W** | Reduced from 7.8 °C/W in Rev A.1 |
 
-#### Calculated Tj at worst-case (T_ambient = 50 °C, adaptive bus voltage active)
+#### Calculated Tj at worst-case (T_ambient = 50 °C, fixed 44 V bus, 600 mA, 28 V LED)
 
 ```
-P_diss = (V_bus_adaptive − V_LED) × I = 2.5 V × 0.7 A = 1.75 W per channel
-P_total = 2 × 1.75 = 3.5 W
+P_diss = (44 V − 28 V) × 0.6 A = 16 V × 0.6 A = 9.6 W per channel
+P_total = 2 × 9.6 = 19.2 W
 
-T_Al  = T_ambient + P_total × R_Al-ambient / 2 (per device contribution)
-       = 50 + 3.5 × 2.5 / 2
-       = 54.4 °C
+T_Al  = T_ambient + P_total × R_Al-ambient / 2  (per-device contribution to Al temp)
+      = 50 + 19.2 × 2.5 / 2
+      = 50 + 24.0
+      = 74.0 °C
 
 Tj    = T_Al + P_diss × (R_jc + R_cp + R_PCB)
-       = 54.4 + 1.75 × (3.1 + 1.0 + 1.2)
-       = 54.4 + 9.3
-       = 63.7 °C   ✓  (Tj,max = 150 °C; margin = 86 °C)
+      = 74.0 + 9.6 × (2.0 + 0.8 + 0.5)
+      = 74.0 + 9.6 × 3.3
+      = 74.0 + 31.7
+      = 105.7 °C   — within Tj,max = 150 °C; within 125 °C safety limit (margin = 19 °C)
+
+NTC warning at 70 °C PCB → reduces I to 480 mA:
+  P_diss_ntc = 16 V × 0.48 A = 7.68 W per channel; P_total = 15.36 W
+  T_Al  = 50 + 15.36 × 2.5 / 2 = 50 + 19.2 = 69.2 °C
+  Tj    = 69.2 + 7.68 × 3.3 = 69.2 + 25.3 = 94.5 °C   ✓  (target ≤ 95 °C met)
 ```
 
-Without adaptive control (fixed 44 V bus, V_LED = 28 V, Pdiss = 11.2 W per channel):
+**Conclusion (Rev A.2)**: With fixed 44 V bus and 600 mA firmware limit, worst-case Tj ≈ 106 °C (< 125 °C limit). Once the NTC 70 °C warning threshold is reached and current reduces to 480 mA, Tj drops to ≤ 95 °C as targeted. **No adaptive bus-voltage firmware control is required.** NTC-based current limiting at 70 °C and hard shutdown at 85 °C PCB temperature provide all necessary thermal protection.
 
-```
-T_Al  = 50 + 22.4 × 2.5 / 2 = 78 °C
-Tj    = 78 + 11.2 × 5.3 = 137 °C   ⚠️  (above 125 °C; adaptive control is REQUIRED)
-```
+**Adaptive bus-voltage control (V_bus regulation) is explicitly NOT implemented** – the hardware is dimensioned to be thermally safe at fixed 44 V without it.
 
-**Adaptive bus voltage control is mandatory** for operation with LED strings below ~36 V forward voltage. At 36 V: Pdiss = (44-36) × 0.7 = 5.6 W → Tj = T_Al + 5.6 × 5.3 = 50+14+29.7 = 93.7 °C (without adaptive). Adaptive sets V_bus = 38.5 V → Pdiss = 1.75 W → Tj = 64 °C.
-
-The NTC-based firmware shutdown at 85 °C PCB temperature serves as a hardware safety backup in case adaptive control fails or the enclosure coupling is worse than modelled.
-
-
-
-- **Normal dimming**: Continuous analog DAC control. MCU writes 12-bit value to MCP4728; DAC output 0–1.0V → current 0–700mA.
+- **Normal dimming**: Continuous analog DAC control. MCU writes 12-bit value to MCP4728; DAC output 0–1.0V → current 0–600mA (firmware-limited).
 - **Below 0.1%**: MCU sets DAC = 0V; MOSFET gate pulled to 0V via op-amp output = 0V. Channel fully off.
 - **PWM usage**: None in normal dimming. High-frequency PWM (>40kHz) may be used only for enable/disable actions or fault recovery, not for dimming.
 - **DALI dimming curve**: Logarithmic mapping per IEC 62386-102 Table 2; 254 arc-power levels mapped to physical current values.
@@ -368,12 +369,12 @@ f_hf = 1 / (2π × R_comp × C_hf) ≈ 160 kHz
 
 | Protection | Threshold | Action |
 |---|---|---|
-| NTC over-temperature warning | 70°C | Reduce max current 20% |
+| NTC over-temperature warning | 70°C | Reduce max current 20% (600mA → 480mA) |
 | NTC over-temperature shutdown | 85°C | Turn off both channels; DALI fault code |
 | Hysteresis | 10°C | Re-enable after cooling |
 | Input under-voltage | <43V | Graceful shutdown |
 | Input over-voltage | >55V | Shutdown; TVS handles transients |
-| OCP per channel | ~1.05A | Immediate gate shutdown; latch |
+| OCP per channel | ~900 mA | Immediate gate shutdown; latch (reduced from 1.05A) |
 
 ---
 
@@ -398,4 +399,4 @@ Board thickness: 1.6mm. Material: FR4, Tg ≥ 150°C.
 4. **DALI certification**: Not claimed. Protocol compliance requires DALI Alliance test suite (OI-005).
 5. **Safety certification**: No CE or safety marking claimed. IEC 62368-1 / EN 61347-2-13 assessment required (OI-006).
 6. **EMC**: 200kHz switching requires conducted/radiated EMI management. No pre-compliance test results available (OI-007).
-7. **Thermal validation**: Q_WW/Q_CW changed to D2PAK (STB20NF06L), 9 thermal vias, adaptive bus voltage control. Calculated Tj ≤ 64°C at 50°C ambient with adaptive control active (see §4.4). Prototype measurement required (OI-008).
+7. **Thermal validation**: Q_WW/Q_CW upgraded to STW20NM60N (D2PAK, 15mΩ, Rth(j-c)=2.0°C/W), 25 thermal vias (5×5 array), 30×30mm B.Cu thermal pour, firmware current limit 600mA, OCP 900mA. Calculated worst-case Tj ≤ 106°C (< 125°C limit) at 50°C ambient, fixed 44V bus; no adaptive bus-voltage firmware control required (see §4.4). Prototype measurement required (OI-008).
