@@ -1,0 +1,16 @@
+add_library(test_support INTERFACE)
+target_include_directories(test_support INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/mock)
+
+function(add_firmware_test test_name source_file)
+    add_executable(${test_name} ${source_file})
+    target_link_libraries(${test_name} PRIVATE firmware_core test_support)
+    target_compile_definitions(${test_name} PRIVATE HOST_BUILD=1)
+    target_compile_options(${test_name} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    add_test(NAME ${test_name} COMMAND ${test_name})
+endfunction()
+
+add_firmware_test(test_cct_mixing ${CMAKE_CURRENT_SOURCE_DIR}/test_cct_mixing.c)
+add_firmware_test(test_power_limiter ${CMAKE_CURRENT_SOURCE_DIR}/test_power_limiter.c)
+add_firmware_test(test_fade_engine ${CMAKE_CURRENT_SOURCE_DIR}/test_fade_engine.c)
+add_firmware_test(test_dali_parser ${CMAKE_CURRENT_SOURCE_DIR}/test_dali_parser.c)
+add_firmware_test(test_wear_leveling ${CMAKE_CURRENT_SOURCE_DIR}/test_wear_leveling.c)
