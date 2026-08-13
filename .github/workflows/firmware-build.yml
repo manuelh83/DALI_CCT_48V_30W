@@ -1,0 +1,40 @@
+name: firmware-build
+
+on:
+  push:
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/firmware-build.yml'
+  pull_request:
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/firmware-build.yml'
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure host build
+        run: cmake -S firmware -B firmware/build -DFIRMWARE_BUILD_TESTS=ON
+      - name: Build host targets
+        run: cmake --build firmware/build --parallel
+      - name: Run unit tests
+        run: ctest --test-dir firmware/build --output-on-failure
+
+  embedded-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ARM GCC
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi
+      - name: Configure embedded build
+        run: >-
+          cmake -S firmware -B firmware/build-embedded
+          -DFIRMWARE_BUILD_TESTS=OFF
+          -DFIRMWARE_BUILD_EMBEDDED=ON
+          -DCMAKE_TOOLCHAIN_FILE=firmware/cmake/arm-none-eabi.cmake
+      - name: Build embedded image
+        run: cmake --build firmware/build-embedded --parallel
+      - name: Verify hex output
+        run: test -f firmware/build-embedded/firmware.hex

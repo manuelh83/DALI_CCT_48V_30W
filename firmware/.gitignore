@@ -1,0 +1,10 @@
+build/
+out/
+coverage/
+*.elf
+*.hex
+*.map
+*.o
+*.obj
+*.a
+*.d

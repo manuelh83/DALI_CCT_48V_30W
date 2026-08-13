@@ -1,0 +1,1 @@
+/usr/bin/arm-none-eabi-gcc CMakeFiles/firmware_host.dir/src/main.c.obj -o firmware_host  libfirmware_core.a -lm

@@ -1,0 +1,14 @@
+#ifndef NVM_LAYOUT_H
+#define NVM_LAYOUT_H
+
+#include <stdint.h>
+
+#include "config.h"
+#include "dali_nvm_map.h"
+
+#define NVM_STATIC_PAGE_ADDRESS DALI_NVM_STATIC_BASE
+#define NVM_DYNAMIC_PAGE_ADDRESS DALI_NVM_DYNAMIC_BASE
+#define NVM_DYNAMIC_SLOT_COUNT FW_DYNAMIC_SLOT_COUNT
+#define NVM_DYNAMIC_SLOT_SIZE FW_DYNAMIC_SLOT_SIZE
+
+#endif
