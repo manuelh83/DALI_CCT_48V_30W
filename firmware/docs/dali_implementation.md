@@ -22,4 +22,4 @@ The firmware models a DALI control gear with DT8 tunable-white behavior and pers
 ## Persistence Model
 
 - static DALI config stored at `0x00..0x3E`
-- dynamic last-state ring stored at `0x40..0xFF`
+- dynamic last-state ring stored at `0x40..0x23F` as 64 sequence-tagged slots

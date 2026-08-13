@@ -28,6 +28,7 @@ bool NvmHandler_SavePersistent(const DaliState *state)
 
 bool NvmHandler_SaveDynamic(DaliState *state)
 {
+    state->dynamic.sequence++;
     state->dynamic.last_arc_level = state->actual_level;
     state->dynamic.last_tc_mirek = state->actual_tc_mirek;
     state->dynamic.valid_marker = 0xA5U;

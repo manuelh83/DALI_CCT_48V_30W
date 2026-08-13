@@ -16,7 +16,9 @@ bool WearLeveling_Load(DaliDynamicState *dynamic_state)
     bool found = false;
     for (uint8_t slot = 0U; slot < NVM_DYNAMIC_SLOT_COUNT; ++slot) {
         DaliDynamicState temp = {0};
-        if (EepromDriver_Read(slot_address(slot), (uint8_t *)&temp, sizeof(temp)) && (temp.valid_marker == 0xA5U)) {
+        if (EepromDriver_Read(slot_address(slot), (uint8_t *)&temp, sizeof(temp)) &&
+            (temp.valid_marker == 0xA5U) &&
+            (!found || (temp.sequence > candidate.sequence))) {
             candidate = temp;
             found = true;
         }
@@ -29,11 +31,17 @@ bool WearLeveling_Load(DaliDynamicState *dynamic_state)
 
 bool WearLeveling_Store(const DaliDynamicState *dynamic_state)
 {
+    uint32_t newest_sequence = 0U;
     uint8_t next_slot = 0U;
+    bool found = false;
     for (uint8_t slot = 0U; slot < NVM_DYNAMIC_SLOT_COUNT; ++slot) {
         DaliDynamicState temp = {0};
-        if (EepromDriver_Read(slot_address(slot), (uint8_t *)&temp, sizeof(temp)) && (temp.valid_marker == 0xA5U)) {
+        if (EepromDriver_Read(slot_address(slot), (uint8_t *)&temp, sizeof(temp)) &&
+            (temp.valid_marker == 0xA5U) &&
+            (!found || (temp.sequence > newest_sequence))) {
+            newest_sequence = temp.sequence;
             next_slot = (uint8_t)((slot + 1U) % NVM_DYNAMIC_SLOT_COUNT);
+            found = true;
         }
     }
     return EepromDriver_Write(slot_address(next_slot), (const uint8_t *)dynamic_state, sizeof(*dynamic_state));

@@ -155,9 +155,8 @@ void DaliApplication_Process(DaliState *state, uint16_t frame, uint32_t now_ms)
     const uint8_t data = (uint8_t)(frame & 0xFFU);
     const bool command_frame = (address & 0x01U) != 0U;
     const bool address_match = DaliApplication_AddressMatches(state, address);
-    const bool special_broadcast = (address == 0xFFU);
 
-    if (!address_match && !special_broadcast) {
+    if (!address_match) {
         return;
     }
 

@@ -21,8 +21,9 @@ typedef struct {
 } DaliPersistentState;
 
 typedef struct {
-    uint8_t last_arc_level;
+    uint32_t sequence;
     uint16_t last_tc_mirek;
+    uint8_t last_arc_level;
     uint8_t valid_marker;
 } DaliDynamicState;
 
