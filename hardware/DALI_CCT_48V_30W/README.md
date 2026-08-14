@@ -57,13 +57,13 @@ A production-oriented KiCad 8+ reference design for a **48 V SELV, 30 W maximum,
     ├── BLOCK 3: Two Linear Low-Side Current Sinks
     │     Q_WW + R_SENSE_WW + U_CS_WW (OPA2333) → [J3-pin2] WW−
     │     Q_CW + R_SENSE_CW + U_CS_CW (OPA2333) → [J3-pin3] CW−
-    │     Hardware OCP via LM393 comparator (threshold ~1.05A)
-    │     Analog current setpoint from MCU DAC (MCP4728 16-bit I2C)
+    │     Hardware OCP via LM393 comparator (threshold ~900mA)
+    │     Analog current setpoint from MCU DAC (MCP4728 12-bit I2C)
     │
     ├── BLOCK 5: MCU, NVM, SWD
     │     U_MCU: STM32G031K8T6 (ARM Cortex-M0+, 64KB flash)
     │     U_EEP: AT24C32E I2C EEPROM (DALI NVM)
-    │     U_DAC: MCP4728 16-bit quad DAC (current setpoints)
+    │     U_DAC: MCP4728 12-bit quad DAC (current setpoints)
     │     [J4] SWD programming header (1.27mm)
     │
     └── BLOCK 6: Galvanically Isolated DALI Interface

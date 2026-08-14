@@ -92,7 +92,7 @@ The firmware must implement the following command sets:
 **DALI Arc-Power Dimming Curve**:
 ```
 If arc_power_level == 0: output = OFF (current = 0)
-If arc_power_level == 1: output = MIN_LEVEL (firmware default: ~0.1% = ~0.7mA at 700mA FSR)
+If arc_power_level == 1: output = MIN_LEVEL (firmware default: ~0.1% = ~0.6mA at 600mA FSR)
 If arc_power_level == 254: output = MAX_LEVEL (firmware default: 100% = full current)
 Physical_current = max_current × (10 ^ ((arc_power_level - 254) / 253 × log10(min/max)))
 ```
@@ -220,7 +220,7 @@ On DALI bus loss (no valid DALI frame received for >500ms):
 - Maximum hardware current per channel: 700 mA
 - Maximum firmware-enforced current per channel: **600 mA** (firmware constant `I_MAX = 600mA`)
 - Maximum total firmware-enforced power: firmware enforces P_total ≤ 28W
-- DAC full scale: MCP4728 = 4096 counts → 0–1.0V → 0–700mA through op-amp control loop
+- DAC full scale: MCP4728 = 4096 counts → 0–1.0V → 0–600mA through op-amp control loop
 
 ```
 DAC_WW_code = round(I_WW_target / I_MAX * 4095)

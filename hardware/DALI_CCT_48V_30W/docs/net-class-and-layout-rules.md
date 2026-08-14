@@ -33,7 +33,7 @@ Applies to nets matching: `LED*`, `LED_BUS*`, `WW-`, `CW-`
 
 | Rule | Value | Rationale |
 |---|---|---|
-| Minimum track width | 1.5 mm | 700mA peak per channel; temperature rise < 10°C |
+| Minimum track width | 1.5 mm | 600mA peak per channel; temperature rise < 10°C |
 | Minimum clearance | 0.3 mm | 44V + margin |
 | Via drill | 0.5 mm | Power via |
 | Via annular ring | 0.25 mm | Standard |
