@@ -217,7 +217,7 @@ On DALI bus loss (no valid DALI frame received for >500ms):
 
 ### 5.1 Current Scale
 
-- Maximum hardware current per channel: 700 mA
+- Maximum hardware current per channel: 900 mA (OCP threshold)
 - Maximum firmware-enforced current per channel: **600 mA** (firmware constant `I_MAX = 600mA`)
 - Maximum total firmware-enforced power: firmware enforces P_total ≤ 28W
 - DAC full scale: MCP4728 = 4096 counts → 0–1.0V → 0–600mA through op-amp control loop

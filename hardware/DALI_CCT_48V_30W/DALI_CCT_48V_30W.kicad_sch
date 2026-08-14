@@ -815,7 +815,7 @@
     (effects (font (size 3 3) (bold yes)) (justify left))
     (uuid "cccccccc-0017-0000-0000-000000000001")
   )
-  (text "LED output (max):  WW 600mA x 40V = 24W  OR  CW 600mA x 40V = 24W  (firmware limits total to 30W)\nBuck-boost loss:   ~5% at full load -> +1.5W\nCurrent sink loss: (44V - LED_Vf) * I_LED e.g. (44-36)*0.6 = 4.8W per channel\nAux supply:        ~2W\nTotal input power: ~38W typical at 30W LED output (efficiency ~79%)\nInput current:     38W / 43.2V = 880mA max -> PCB traces and fuse rated 1.5A"
+  (text "LED output (max):  WW 600mA x 40V = 24W  OR  CW 600mA x 40V = 24W  (firmware limits total to 28W)\nBuck-boost loss:   ~5% at full load -> +1.5W\nCurrent sink loss: (44V - LED_Vf) * I_LED e.g. (44-36)*0.6 = 4.8W per channel\nAux supply:        ~2W\nTotal input power: ~34W typical at 28W LED output (efficiency ~82%)\nInput current:     34W / 43.2V = 790mA max -> PCB traces and fuse rated 1.5A"
     (exclude_from_sim no)
     (at 120 38 0)
     (effects (font (size 1.5 1.5)) (justify left top))
